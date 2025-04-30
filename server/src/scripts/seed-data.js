@@ -83,36 +83,64 @@ const seedParties = () => {
   
   const parties = [
     { 
-      party_number: 'C001', 
-      name: 'Johnson Construction', 
+      party_number: '0007',
+      name: 'Honest Abe', 
       phone: '706-555-0101', 
       email: 'info@johnsonconstruction.example.com',
       notes: 'Large commercial builder, regular customer'
     },
     { 
-      party_number: 'C002', 
-      name: 'Smith Home Builders', 
+      party_number: '0023', 
+      name: 'Ellijay Lumber', 
       phone: '706-555-0102', 
       email: 'contact@smithhomebuilders.example.com',
       notes: 'Residential builder, monthly orders'
     },
     { 
-      party_number: 'C003', 
-      name: 'Mountain Cabins Inc', 
+      party_number: '0044', 
+      name: 'Babb', 
       phone: '706-555-0103', 
       email: 'sales@mountaincabins.example.com',
       notes: 'Specializes in vacation cabins'
     },
     { 
-      party_number: 'C004', 
-      name: 'Carter Renovations', 
+      party_number: '0086', 
+      name: 'Koppers', 
       phone: '706-555-0104', 
       email: 'jim@carterrenovations.example.com',
       notes: 'Small renovation company, prefers oak'
     },
     { 
-      party_number: 'C005', 
-      name: 'Blue Ridge Woodworkers', 
+      party_number: '0087', 
+      name: 'Trull', 
+      phone: '706-555-0105', 
+      email: 'workshop@brwoodworkers.example.com',
+      notes: 'Custom furniture maker, buys high-grade hardwoods'
+    },
+    { 
+      party_number: '0089', 
+      name: 'Cor-Tenn', 
+      phone: '706-555-0105', 
+      email: 'workshop@brwoodworkers.example.com',
+      notes: 'Custom furniture maker, buys high-grade hardwoods'
+    },
+    { 
+      party_number: '0096', 
+      name: 'CP Wilbanks', 
+      phone: '706-555-0105', 
+      email: 'workshop@brwoodworkers.example.com',
+      notes: 'Custom furniture maker, buys high-grade hardwoods'
+    },
+    { 
+      party_number: '0103', 
+      name: 'Tree Brand', 
+      phone: '706-555-0105', 
+      email: 'workshop@brwoodworkers.example.com',
+      notes: 'Custom furniture maker, buys high-grade hardwoods'
+    },
+    { 
+      party_number: '0144', 
+      name: 'Albemarle', 
       phone: '706-555-0105', 
       email: 'workshop@brwoodworkers.example.com',
       notes: 'Custom furniture maker, buys high-grade hardwoods'
@@ -318,15 +346,17 @@ const seedSpecies = () => {
   
   const speciesList = [
     { species_number: 'SPF', name: 'Spruce-Pine-Fir', description: 'SPF lumber is a grouping of various species' },
-    { species_number: 'SYP', name: 'Southern Yellow Pine', description: 'Dense and strong softwood' },
+    { species_number: '001', name: 'Yellow Pine', description: 'Southern Yellow Pine - Dense and strong softwood' },
+    { species_number: '002', name: 'White Pine', description: 'White Pine - Clear softwood' },
     { species_number: 'DF', name: 'Douglas Fir', description: 'Straight, true, strong softwood' },
     { species_number: 'HEM', name: 'Hemlock', description: 'Light softwood with straight grain' },
     { species_number: 'OAK', name: 'Red Oak', description: 'Hardwood with strong grain pattern' },
-    { species_number: 'POP', name: 'Poplar', description: 'Economical hardwood, easy to work with' },
+    { species_number: '005', name: 'Poplar', description: 'Economical hardwood, easy to work with' },
     { species_number: 'MAP', name: 'Maple', description: 'Hard, dense wood with uniform texture' },
     { species_number: 'CED', name: 'Cedar', description: 'Aromatic, naturally resistant to decay' },
     { species_number: 'ASH', name: 'Ash', description: 'Strong hardwood with excellent flexibility' },
-    { species_number: 'CHE', name: 'Cherry', description: 'Premium hardwood with rich color' }
+    { species_number: 'CHE', name: 'Cherry', description: 'Premium hardwood with rich color' },
+    { species_number: '003', name: 'Hardwood', description: 'Premium hardwood - Oak, Cherry, etc.' }
   ];
   
   runTransaction(() => {

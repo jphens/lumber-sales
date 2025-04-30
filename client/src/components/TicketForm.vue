@@ -15,7 +15,7 @@
         <h3>Customer Information</h3>
         <div class="customer-info">
           <div class="form-group">
-            <label>Invoice Number</label>
+            <label>Invoice #</label>
             <!-- Only show invoice number when editing an existing ticket -->
             <input v-if="isEditMode" v-model="ticket.invoice_number" class="form-control" disabled />
             <input v-else value="(Auto-assigned)" class="form-control" disabled />
@@ -56,10 +56,10 @@
           <div class="form-group">
             <label>Status</label>
             <select v-model="ticket.status" class="form-control">
-              <option value="draft">Draft</option>
-              <option value="final">Final</option>
-              <option value="paid">Paid</option>
-              <option value="void">Void</option>
+              <option value="draft">Quote</option>
+              <option value="final">Invoice</option>
+              <option value="paid">Purchase Order</option>
+              <option value="void">Shipping List</option>
             </select>
           </div>
         </div>
@@ -69,7 +69,7 @@
         <h3>Addresses</h3>
         <div class="addresses">
           <div class="form-group">
-            <label>Billing Address</label>
+            <label>Bill to</label>
             <select v-model="ticket.billing_address_id" class="form-control">
               <option v-for="address in billingAddresses" 
                       :key="address.id" 
@@ -79,7 +79,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Shipping Address</label>
+            <label>Ship to</label>
             <select v-model="ticket.shipping_address_id" class="form-control">
               <option v-for="address in shippingAddresses" 
                       :key="address.id" 
@@ -99,8 +99,8 @@
               <tr>
                 <th>Species</th>
                 <th>Quantity</th>
-                <th>Width (in)</th>
                 <th>Thickness (in)</th>
+                <th>Width (in)</th>
                 <th>Length (ft)</th>
                 <th>BF</th>
                 <th>Price/MBF</th>
@@ -120,12 +120,11 @@
                 </td>
                 <td>
                   <input type="number" v-model.number="item.quantity" class="form-control" @change="calculateItemTotal(index)" />
+                </td>                <td>
+                  <input type="number" v-model.number="item.thickness" class="form-control" @change="calculateItemTotal(index)" />
                 </td>
                 <td>
                   <input type="number" v-model.number="item.width" class="form-control" @change="calculateItemTotal(index)" />
-                </td>
-                <td>
-                  <input type="number" v-model.number="item.thickness" class="form-control" @change="calculateItemTotal(index)" />
                 </td>
                 <td>
                   <input type="number" v-model.number="item.length" class="form-control" @change="calculateItemTotal(index)" />

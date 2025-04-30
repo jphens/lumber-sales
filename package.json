@@ -1,0 +1,23 @@
+{
+    "name": "lumber-sales",
+    "version": "0.1.1",
+    "private": true,
+    "workspaces": [
+      "client",
+      "server"
+    ],
+    "scripts": {
+      "client": "cd client && npm run serve",
+      "server": "cd server && npm run dev",
+      "dev": "concurrently \"npm run server\" \"npm run client\"",
+      "install:all": "npm install && npm run install:client && npm run install:server",
+      "install:client": "cd client && npm install",
+      "install:server": "cd server && npm install",
+      "build": "cd client && npm run build",
+      "start": "cd server && npm run start",
+      "clearAndSeed": "node server/src/scripts/seed-data.js"
+    },
+    "devDependencies": {
+      "concurrently": "^7.6.0"
+    }
+  }

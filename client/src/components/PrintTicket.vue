@@ -106,6 +106,7 @@
         </div>
         
         <div class="footer mt-5">
+          <p><em>Balance is due in 30-days from the invoice date. Past due balances are subject to a late payment charge of up to 1.5% per month, or 18% per year</em></p>
           <p><em>Thank you for your business!</em></p>
         </div>
       </div>
