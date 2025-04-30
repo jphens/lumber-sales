@@ -144,7 +144,7 @@ const initDb = () => {
     customerName TEXT NOT NULL,
     customerPhone TEXT,
     date TEXT NOT NULL,
-    status TEXT DEFAULT 'draft', -- 'draft', 'final', 'paid', 'void'
+    status TEXT DEFAULT 'invoice', -- 'quote', 'purchase order', 'bill of lading', 'void'
     total_bf REAL DEFAULT 0,
     total_tax REAL DEFAULT 0,
     total_amount REAL DEFAULT 0,

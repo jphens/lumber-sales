@@ -59,7 +59,7 @@
               <option value="draft">Quote</option>
               <option value="final">Invoice</option>
               <option value="paid">Purchase Order</option>
-              <option value="void">Shipping List</option>
+              <option value="void">Bill of Lading</option>
             </select>
           </div>
         </div>

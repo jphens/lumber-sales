@@ -68,7 +68,7 @@
               <tr v-for="(item, index) in ticket.items" :key="index">
                 <td>{{ getSpeciesName(item) }}</td>
                 <td>{{ item.quantity }}</td>
-                <td>{{ item.width }} × {{ item.thickness }}</td>
+                <td>{{ item.thickness }} x {{ item.width }}</td>
                 <td>{{ item.length }}</td>
                 <td>{{ formatNumber(item.total_bf) }}</td>
                 <td>${{ formatCurrency(item.price_per_mbf) }}</td>
