@@ -135,7 +135,12 @@
             <tbody>
               <tr v-for="(item, index) in ticket.items" :key="index">
                 <td>
-                  <select v-model="item.species_id" class="form-control" @change="calculateItemTotal(index)">
+                  <select 
+                    v-model="item.species_id" 
+                    class="form-control" 
+                    @change="calculateItemTotal(index)"
+                    ref="firstField"
+                  >
                     <option value="">Select Species</option>
                     <option v-for="species in speciesList" :key="species.id" :value="species.id">
                       {{ species.list_name }}
@@ -143,24 +148,52 @@
                   </select>
                 </td>
                 <td>
-                  <input type="number" v-model.number="item.quantity" class="form-control" @change="calculateItemTotal(index)" />
-                </td>                <td>
-                  <input type="number" v-model.number="item.thickness" class="form-control" @change="calculateItemTotal(index)" />
+                  <input 
+                    type="number" 
+                    v-model.number="item.quantity" 
+                    class="form-control" 
+                    @change="calculateItemTotal(index)" 
+                  />
                 </td>
                 <td>
-                  <input type="number" v-model.number="item.width" class="form-control" @change="calculateItemTotal(index)" />
+                  <input 
+                    type="number" 
+                    v-model.number="item.thickness" 
+                    class="form-control" 
+                    @change="calculateItemTotal(index)" 
+                  />
                 </td>
                 <td>
-                  <input type="number" v-model.number="item.length" class="form-control" @change="calculateItemTotal(index)" />
+                  <input 
+                    type="number" 
+                    v-model.number="item.width" 
+                    class="form-control" 
+                    @change="calculateItemTotal(index)" 
+                  />
+                </td>
+                <td>
+                  <input 
+                    type="number" 
+                    v-model.number="item.length" 
+                    class="form-control" 
+                    @change="calculateItemTotal(index)" 
+                  />
                 </td>
                 <td>{{ formatNumber(item.total_bf) }}</td>
                 <td>
-                  <input type="number" v-model.number="item.price_per_mbf" class="form-control" @change="calculateItemTotal(index)" />
+                  <input 
+                    type="number"
+                    v-model.number="item.price_per_mbf" 
+                    class="form-control" 
+                    @change="calculateItemTotal(index)"
+                    @keydown.tab="handleLastFieldTab(index, $event)"
+                    ref="lastField"
+                  />
                 </td>
                 <td>${{ formatCurrency(item.tax_amount) }}</td>
                 <td>${{ formatCurrency(item.total_amount) }}</td>
                 <td>
-                  <button @click="removeItem(index)" class="btn btn-danger btn-sm">Remove</button>
+                  <button @click="removeItem(index)" class="btn btn-danger btn-sm" :disabled="ticket.items.length === 1">Remove</button>
                 </td>
               </tr>
             </tbody>
@@ -213,6 +246,7 @@ import {
   PartyService,
   SpeciesService 
 } from '../services/api';
+import { nextTick } from 'vue';
 
 export default {
   props: {
@@ -252,7 +286,19 @@ export default {
       speciesList: [],
       salesTaxRates: [],
       shipViaMethods: [],
-      currentTaxRate: 0
+      currentTaxRate: 0,
+      defaultItemValues: {
+        species_id: '',
+        quantity: 1,
+        width: 2,
+        thickness: 4,
+        length: 8,
+        price_per_mbf: 1000.00,
+        total_bf: 0,
+        tax_amount: 0,
+        total_tax: 0,
+        total_amount: 0
+      }
     };
   },
   computed: {
@@ -301,22 +347,26 @@ export default {
       }
       return formattedAddress;
     },
+    // Modified to use default values from data property
     addItem() {
-      this.ticket.items.push({
-        species_id: '',
-        quantity: 1,
-        width: 2,
-        thickness: 4,
-        length: 8,
-        price_per_mbf: 1000.00,
-        total_bf: 0,
-        tax_amount: 0,
-        total_tax: 0,
-        total_amount: 0
-      });
+      // Create a new item with default values - using spread to create a fresh copy
+      const newItem = { ...this.defaultItemValues };
+      this.ticket.items.push(newItem);
       this.calculateItemTotal(this.ticket.items.length - 1);
+      
+      // Focus on the first field of the new row after Vue updates the DOM
+      nextTick(() => {
+        const firstFields = this.$refs.firstField;
+        if (firstFields && firstFields.length) {
+          firstFields[firstFields.length - 1].focus();
+        }
+      });
     },
+    // Add validation to prevent removing the last item
     removeItem(index) {
+      // Don't allow removing the last item
+      if (this.ticket.items.length <= 1) return;
+      
       this.ticket.items.splice(index, 1);
       this.calculateTotals();
     },
@@ -339,6 +389,31 @@ export default {
       
       this.calculateTotals();
     },
+    // New method to handle tab key on the last field of a row
+    handleLastFieldTab(index, event) {
+      // Only proceed if we're on the last field of the row and not pressing shift
+      if (!event.shiftKey) {
+        // Check if this is the last row
+        if (index === this.ticket.items.length - 1) {
+          // Check if the current row has data before adding a new row
+          const currentItem = this.ticket.items[index];
+          const hasData = currentItem.quantity > 0 || 
+                          currentItem.width > 0 || 
+                          currentItem.thickness > 0 || 
+                          currentItem.length > 0 || 
+                          currentItem.price_per_mbf > 0 ||
+                          currentItem.species_id;
+                          
+          if (hasData) {
+            // Prevent default tab behavior
+            event.preventDefault();
+            
+            // Add a new row
+            this.addItem();
+          }
+        }
+      }
+    },
     calculateSubtotal() {
       return this.ticket.items.reduce((sum, item) => sum + (item.total_amount - item.tax_amount), 0);
     },
@@ -355,6 +430,16 @@ export default {
     async saveTicket() {
       this.saving = true;
       try {
+        // Remove any completely empty rows before saving
+        this.ticket.items = this.ticket.items.filter(item => {
+          return item.quantity > 0 || 
+                 item.width > 0 || 
+                 item.thickness > 0 || 
+                 item.length > 0 || 
+                 item.price_per_mbf > 0 ||
+                 item.species_id;
+        });
+        
         if (this.isEditMode) {
           // Update existing ticket
           const updatedTicket = await TicketService.updateTicket(this.id, this.ticket);
@@ -432,17 +517,17 @@ export default {
       }
     },
     async searchCustomers() {
-  if (this.customerSearch.length < 2) {
-    this.customerResults = [];
-    return;
-  }
-  
-  try {
-    this.customerResults = await PartyService.searchParties(this.customerSearch);
-  } catch (error) {
-    console.error('Error searching customers:', error);
-  }
-},
+      if (this.customerSearch.length < 2) {
+        this.customerResults = [];
+        return;
+      }
+      
+      try {
+        this.customerResults = await PartyService.searchParties(this.customerSearch);
+      } catch (error) {
+        console.error('Error searching customers:', error);
+      }
+    },
     async selectCustomer(customer) {
       this.customerSearch = customer.list_name;
       this.customerResults = [];
@@ -454,62 +539,58 @@ export default {
       await this.loadCustomerData(customer.id);
     },
     async loadCustomerData(partyId) {
-  try {
-    // Get customer data including tax exempt status and default shipping method
-    this.customerData = await CustomerService.getCustomerByPartyId(partyId);
-    
-    // Set tax exempt status
-    this.customerIsTaxExempt = this.customerData.sales_tax_exempt === 1;
-    
-    // Set default shipping method if available
-    if (this.customerData.default_ship_via_id) {
-      this.ticket.ship_via_id = this.customerData.default_ship_via_id;
-    }
-    
-    // Get customer addresses
-    this.customerAddresses = await AddressService.getAddressesForParty(partyId);
-    
-    // Set default billing and shipping addresses if available
-    const defaultBilling = this.billingAddresses.find(a => a.is_default);
-    const defaultShipping = this.shippingAddresses.find(a => a.is_default);
-    
-    if (defaultBilling) {
-      this.ticket.billing_address_id = defaultBilling.id;
-    }
-    
-    if (defaultShipping) {
-      this.ticket.shipping_address_id = defaultShipping.id;
-      this.updateSalesTax();
-    }
-  } catch (error) {
-    console.error('Error loading customer data:', error);
-  }
-},
-async loadSpecies() {
-  try {
-    this.speciesList = await SpeciesService.getAllSpecies();
-  } catch (error) {
-    console.error('Error loading species:', error);
-  }
-},
-
-// Change the loadSalesTaxRates method
-async loadSalesTaxRates() {
-  try {
-    this.salesTaxRates = await SalesTaxService.getAllSalesTax();
-  } catch (error) {
-    console.error('Error loading sales tax rates:', error);
-  }
-},
-
-// Change the loadShipViaMethods method
-async loadShipViaMethods() {
-  try {
-    this.shipViaMethods = await ShipViaService.getAllShipVia();
-  } catch (error) {
-    console.error('Error loading shipping methods:', error);
-  }
-},
+      try {
+        // Get customer data including tax exempt status and default shipping method
+        this.customerData = await CustomerService.getCustomerByPartyId(partyId);
+        
+        // Set tax exempt status
+        this.customerIsTaxExempt = this.customerData.sales_tax_exempt === 1;
+        
+        // Set default shipping method if available
+        if (this.customerData.default_ship_via_id) {
+          this.ticket.ship_via_id = this.customerData.default_ship_via_id;
+        }
+        
+        // Get customer addresses
+        this.customerAddresses = await AddressService.getAddressesForParty(partyId);
+        
+        // Set default billing and shipping addresses if available
+        const defaultBilling = this.billingAddresses.find(a => a.is_default);
+        const defaultShipping = this.shippingAddresses.find(a => a.is_default);
+        
+        if (defaultBilling) {
+          this.ticket.billing_address_id = defaultBilling.id;
+        }
+        
+        if (defaultShipping) {
+          this.ticket.shipping_address_id = defaultShipping.id;
+          this.updateSalesTax();
+        }
+      } catch (error) {
+        console.error('Error loading customer data:', error);
+      }
+    },
+    async loadSpecies() {
+      try {
+        this.speciesList = await SpeciesService.getAllSpecies();
+      } catch (error) {
+        console.error('Error loading species:', error);
+      }
+    },
+    async loadSalesTaxRates() {
+      try {
+        this.salesTaxRates = await SalesTaxService.getAllSalesTax();
+      } catch (error) {
+        console.error('Error loading sales tax rates:', error);
+      }
+    },
+    async loadShipViaMethods() {
+      try {
+        this.shipViaMethods = await ShipViaService.getAllShipVia();
+      } catch (error) {
+        console.error('Error loading shipping methods:', error);
+      }
+    },
     updateSalesTax() {
       // Determine which sales tax to use based on shipping method and address
       if (!this.ticket.ship_via_id || !this.shipViaMethods.length) return;
