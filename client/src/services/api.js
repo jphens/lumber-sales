@@ -464,11 +464,153 @@ export const SpeciesService = {
   }
 };
 
+/**
+ * API service for sales tax operations
+ */
+export const SalesTaxService = {
+  /**
+   * Get all sales tax rates
+   * @returns {Promise<Array>} Array of sales tax objects
+   */
+  async getAllSalesTax() {
+    return apiRequest(`${API_URL}/sales-tax`);
+  },
+
+  /**
+   * Get a sales tax by ID
+   * @param {number} id - Sales tax ID
+   * @returns {Promise<Object>} Sales tax object
+   */
+  async getSalesTax(id) {
+    return apiRequest(`${API_URL}/sales-tax/${id}`);
+  },
+
+  /**
+   * Get a sales tax by location
+   * @param {string} county - County name
+   * @param {string} state - State code
+   * @returns {Promise<Object>} Sales tax object
+   */
+  async getSalesTaxByLocation(county, state) {
+    return apiRequest(`${API_URL}/sales-tax/location/${encodeURIComponent(county)}/${encodeURIComponent(state)}`);
+  },
+
+  /**
+   * Create a new sales tax
+   * @param {Object} salesTax - Sales tax data
+   * @returns {Promise<Object>} Created sales tax
+   */
+  async createSalesTax(salesTax) {
+    return apiRequest(`${API_URL}/sales-tax`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(salesTax),
+    });
+  },
+
+  /**
+   * Update an existing sales tax
+   * @param {number} id - Sales tax ID
+   * @param {Object} salesTax - Updated sales tax data
+   * @returns {Promise<Object>} Updated sales tax
+   */
+  async updateSalesTax(id, salesTax) {
+    return apiRequest(`${API_URL}/sales-tax/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(salesTax),
+    });
+  },
+
+  /**
+   * Delete a sales tax
+   * @param {number} id - Sales tax ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteSalesTax(id) {
+    await apiRequest(`${API_URL}/sales-tax/${id}`, {
+      method: 'DELETE',
+    });
+    return true;
+  }
+};
+
+/**
+ * API service for shipping method operations
+ */
+export const ShipViaService = {
+  /**
+   * Get all shipping methods
+   * @returns {Promise<Array>} Array of shipping method objects
+   */
+  async getAllShipVia() {
+    return apiRequest(`${API_URL}/ship-via`);
+  },
+
+  /**
+   * Get a shipping method by ID
+   * @param {number} id - Shipping method ID
+   * @returns {Promise<Object>} Shipping method object
+   */
+  async getShipVia(id) {
+    return apiRequest(`${API_URL}/ship-via/${id}`);
+  },
+
+  /**
+   * Create a new shipping method
+   * @param {Object} shipVia - Shipping method data
+   * @returns {Promise<Object>} Created shipping method
+   */
+  async createShipVia(shipVia) {
+    return apiRequest(`${API_URL}/ship-via`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(shipVia),
+    });
+  },
+
+  /**
+   * Update an existing shipping method
+   * @param {number} id - Shipping method ID
+   * @param {Object} shipVia - Updated shipping method data
+   * @returns {Promise<Object>} Updated shipping method
+   */
+  async updateShipVia(id, shipVia) {
+    return apiRequest(`${API_URL}/ship-via/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(shipVia),
+    });
+  },
+
+  /**
+   * Delete a shipping method
+   * @param {number} id - Shipping method ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteShipVia(id) {
+    await apiRequest(`${API_URL}/ship-via/${id}`, {
+      method: 'DELETE',
+    });
+    return true;
+  }
+};
+
 // Export services as default object and individual services
 export default {
   ticket: TicketService,
   party: PartyService,
   customer: CustomerService,
   address: AddressService,
-  species: SpeciesService
+  species: SpeciesService,
+  salesTax: SalesTaxService,
+  shipVia: ShipViaService
 };

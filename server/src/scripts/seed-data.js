@@ -32,7 +32,9 @@ const clearDatabase = () => {
     'species',
     'ticket_items',
     'tickets',
-    'parties'
+    'parties',
+    'sales_tax',
+    'ship_via'
   ];
   
   runTransaction(() => {
@@ -47,6 +49,109 @@ const clearDatabase = () => {
   });
   
   console.log('Existing data cleared.');
+};
+
+// Seed sales tax
+const seedSalesTax = () => {
+  console.log('Seeding sales tax rates...');
+  
+  const salesTaxes = [
+    {
+      name: 'Gilmer County Sales Tax',
+      county: 'Gilmer',
+      state: 'GA',
+      tax_rate: 0.07,
+      effective_date: '2020-01-01'
+    },
+    {
+      name: 'Fannin County Sales Tax',
+      county: 'Fannin',
+      state: 'GA',
+      tax_rate: 0.07,
+      effective_date: '2020-01-01'
+    },
+    {
+      name: 'Pickens County Sales Tax',
+      county: 'Pickens',
+      state: 'GA',
+      tax_rate: 0.07,
+      effective_date: '2020-01-01'
+    },
+    {
+      name: 'Gordon County Sales Tax',
+      county: 'Gordon',
+      state: 'GA',
+      tax_rate: 0.07,
+      effective_date: '2020-01-01'
+    }
+  ];
+  
+  runTransaction(() => {
+    const stmt = db.prepare(`
+      INSERT INTO sales_tax (name, county, state, tax_rate, effective_date)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    salesTaxes.forEach(tax => {
+      try {
+        stmt.run(
+          tax.name,
+          tax.county,
+          tax.state,
+          tax.tax_rate,
+          tax.effective_date
+        );
+      } catch (error) {
+        console.error(`Error inserting sales tax ${tax.name}:`, error.message);
+      }
+    });
+  });
+  
+  console.log('Sales tax rates seeded.');
+};
+
+// Seed shipping methods
+const seedShipVia = () => {
+  console.log('Seeding shipping methods...');
+  
+  const shipViaMethods = [
+    {
+      name: 'Pickup',
+      description: 'Customer picks up order at the mill'
+    },
+    {
+      name: 'Delivery',
+      description: 'Order delivered to customer location'
+    },
+    {
+      name: 'Freight',
+      description: 'Order shipped via freight carrier'
+    },
+    {
+      name: 'Transfer',
+      description: 'Internal transfer between locations'
+    }
+  ];
+  
+  runTransaction(() => {
+    const stmt = db.prepare(`
+      INSERT INTO ship_via (name, description)
+      VALUES (?, ?)
+    `);
+    
+    shipViaMethods.forEach(method => {
+      try {
+        stmt.run(
+          method.name,
+          method.description
+        );
+      } catch (error) {
+        console.error(`Error inserting shipping method ${method.name}:`, error.message);
+      }
+    });
+  });
+  
+  console.log('Shipping methods seeded.');
 };
 
 // Seed party types
@@ -144,6 +249,13 @@ const seedParties = () => {
       phone: '706-555-0105', 
       email: 'workshop@brwoodworkers.example.com',
       notes: 'Custom furniture maker, buys high-grade hardwoods'
+    },
+    { 
+      party_number: '0545', 
+      name: 'Sparks Lumber Company', 
+      phone: '706-678-4047', 
+      email: 'info@sparkslumber.example.com',
+      notes: 'Sawmill and lumber supplier'
     }
   ];
   
@@ -180,10 +292,15 @@ const seedCustomers = () => {
   // Get party IDs
   const parties = db.prepare(`SELECT id, party_number FROM parties`).all();
   
+  // Get ship via methods
+  const shipViaMethods = db.prepare(`SELECT id, name FROM ship_via`).all();
+  const pickupMethod = shipViaMethods.find(m => m.name === 'Pickup');
+  const deliveryMethod = shipViaMethods.find(m => m.name === 'Delivery');
+  
   runTransaction(() => {
     // Insert customers
     const customerStmt = db.prepare(`
-      INSERT INTO customers (party_id, tax_exempt, tax_id)
+      INSERT INTO customers (party_id, default_ship_via_id, sales_tax_exempt)
       VALUES (?, ?, ?)
     `);
     
@@ -195,11 +312,13 @@ const seedCustomers = () => {
     
     parties.forEach(party => {
       try {
-        // Make one of the customers tax exempt
-        const taxExempt = party.party_number === 'C001' ? 1 : 0;
-        const taxId = taxExempt ? '123-45-6789' : null;
+        // Make a couple of customers tax exempt
+        const taxExempt = party.party_number === '0007' || party.party_number === '0103' ? 1 : 0;
         
-        customerStmt.run(party.id, taxExempt, taxId);
+        // Alternate between pickup and delivery for default ship via
+        const defaultShipViaId = party.id % 2 === 0 ? pickupMethod.id : deliveryMethod.id;
+        
+        customerStmt.run(party.id, defaultShipViaId, taxExempt);
         mappingStmt.run(party.id);
       } catch (error) {
         console.error(`Error inserting customer for party ${party.id}:`, error.message);
@@ -214,69 +333,101 @@ const seedCustomers = () => {
 const seedAddresses = () => {
   console.log('Seeding addresses...');
   
+  // Get sales tax rates
+  const salesTaxRates = db.prepare(`SELECT id, county, state FROM sales_tax`).all();
+  const gilmerTax = salesTaxRates.find(tax => tax.county === 'Gilmer' && tax.state === 'GA');
+  const fanninTax = salesTaxRates.find(tax => tax.county === 'Fannin' && tax.state === 'GA');
+  const pickensTax = salesTaxRates.find(tax => tax.county === 'Pickens' && tax.state === 'GA');
+  
   const addresses = [
     {
       address_line1: '123 Main St',
       address_line2: 'Suite 101',
       city: 'Ellijay',
       state: 'GA',
+      county: 'Gilmer',
       postal_code: '30540',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: gilmerTax?.id
     },
     {
       address_line1: '456 Oak Ave',
       address_line2: null,
       city: 'Ellijay',
       state: 'GA',
+      county: 'Gilmer',
       postal_code: '30540',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: gilmerTax?.id
     },
     {
       address_line1: '789 Pine Ln',
       address_line2: 'Building B',
       city: 'Blue Ridge',
       state: 'GA',
+      county: 'Fannin',
       postal_code: '30513',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: fanninTax?.id
     },
     {
       address_line1: '321 Cedar Rd',
       address_line2: null,
       city: 'Jasper',
       state: 'GA',
+      county: 'Pickens',
       postal_code: '30143',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: pickensTax?.id
     },
     {
       address_line1: '555 Maple Dr',
       address_line2: 'Unit 200',
       city: 'Ellijay',
       state: 'GA',
+      county: 'Gilmer',
       postal_code: '30540',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: gilmerTax?.id
     },
     {
       address_line1: '999 Spruce Way',
       address_line2: null,
       city: 'Blue Ridge',
       state: 'GA',
+      county: 'Fannin',
       postal_code: '30513',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: fanninTax?.id
     },
     {
       address_line1: '777 Hickory Ct',
       address_line2: null,
       city: 'Jasper',
       state: 'GA',
+      county: 'Pickens',
       postal_code: '30143',
-      country: 'USA'
+      country: 'USA',
+      sales_tax_id: pickensTax?.id
+    },
+    {
+      address_line1: '9222 Hwy 5 S',
+      address_line2: null,
+      city: 'Ellijay',
+      state: 'GA',
+      county: 'Gilmer',
+      postal_code: '30540',
+      country: 'USA',
+      sales_tax_id: gilmerTax?.id
     }
   ];
   
   runTransaction(() => {
     const stmt = db.prepare(`
-      INSERT INTO addresses (address_line1, address_line2, city, state, postal_code, country)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO addresses (
+        address_line1, address_line2, city, state, county, postal_code, country, sales_tax_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     addresses.forEach(address => {
@@ -286,8 +437,10 @@ const seedAddresses = () => {
           address.address_line2,
           address.city,
           address.state,
+          address.county,
           address.postal_code,
-          address.country
+          address.country,
+          address.sales_tax_id
         );
       } catch (error) {
         console.error(`Error inserting address ${address.address_line1}:`, error.message);
@@ -302,8 +455,12 @@ const seedAddresses = () => {
 const seedPartyAddresses = () => {
   console.log('Seeding party addresses...');
   
-  const parties = db.prepare(`SELECT id FROM parties`).all();
-  const addresses = db.prepare(`SELECT id FROM addresses`).all();
+  const parties = db.prepare(`SELECT id, party_number, name FROM parties`).all();
+  const addresses = db.prepare(`SELECT id, address_line1 FROM addresses`).all();
+  
+  // Find Sparks Lumber Company party and the 9222 Hwy 5 S address
+  const sparksLumber = parties.find(p => p.name === 'Sparks Lumber Company');
+  const sparksAddress = addresses.find(a => a.address_line1 === '9222 Hwy 5 S');
   
   // Assign multiple addresses to parties
   const assignments = [
@@ -320,6 +477,7 @@ const seedPartyAddresses = () => {
       VALUES (?, ?, ?, ?)
     `);
     
+    // Assign the addresses for regular parties
     assignments.forEach(assignment => {
       try {
         const party = parties[assignment.partyIndex];
@@ -335,6 +493,16 @@ const seedPartyAddresses = () => {
         console.error(`Error inserting party address:`, error.message);
       }
     });
+    
+    // If we found Sparks Lumber and its address, assign it
+    if (sparksLumber && sparksAddress) {
+      try {
+        // Assign as both billing and shipping with default=true
+        stmt.run(sparksLumber.id, sparksAddress.id, 'both', 1);
+      } catch (error) {
+        console.error(`Error inserting address for Sparks Lumber:`, error.message);
+      }
+    }
   });
   
   console.log('Party addresses seeded.');
@@ -389,6 +557,8 @@ const seedAll = () => {
   clearDatabase();
   
   // Seed tables in order
+  seedSalesTax();
+  seedShipVia();
   seedPartyTypes();
   seedParties();
   seedCustomers();

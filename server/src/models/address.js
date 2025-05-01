@@ -7,7 +7,10 @@ const AddressModel = {
    */
   getAll() {
     const stmt = db.prepare(`
-      SELECT * FROM addresses ORDER BY id DESC
+      SELECT a.*, st.name as tax_name, st.tax_rate 
+      FROM addresses a
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
+      ORDER BY a.id DESC
     `);
     return stmt.all();
   },
@@ -19,7 +22,10 @@ const AddressModel = {
    */
   getById(id) {
     const stmt = db.prepare(`
-      SELECT * FROM addresses WHERE id = ?
+      SELECT a.*, st.name as tax_name, st.tax_rate, st.county as tax_county, st.state as tax_state
+      FROM addresses a
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
+      WHERE a.id = ?
     `);
     return stmt.get(id);
   },
@@ -31,9 +37,11 @@ const AddressModel = {
    */
   getForParty(partyId) {
     const stmt = db.prepare(`
-      SELECT a.*, pa.address_type, pa.is_default
+      SELECT a.*, pa.address_type, pa.is_default, 
+             st.name as tax_name, st.tax_rate, st.county as tax_county, st.state as tax_state
       FROM addresses a
       JOIN party_addresses pa ON a.id = pa.address_id
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
       WHERE pa.party_id = ?
       ORDER BY pa.is_default DESC, a.address_line1
     `);
@@ -48,9 +56,10 @@ const AddressModel = {
    */
   getDefaultForParty(partyId, addressType) {
     const stmt = db.prepare(`
-      SELECT a.*
+      SELECT a.*, st.name as tax_name, st.tax_rate, st.county as tax_county, st.state as tax_state
       FROM addresses a
       JOIN party_addresses pa ON a.id = pa.address_id
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
       WHERE pa.party_id = ? 
         AND pa.address_type IN (?, 'both')
         AND pa.is_default = 1
@@ -67,9 +76,9 @@ const AddressModel = {
   create(address) {
     const stmt = db.prepare(`
       INSERT INTO addresses (
-        address_line1, address_line2, city, state, postal_code, country
+        address_line1, address_line2, city, state, county, postal_code, country, sales_tax_id
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const result = stmt.run(
@@ -77,8 +86,10 @@ const AddressModel = {
       address.address_line2 || null,
       address.city,
       address.state,
+      address.county || null,
       address.postal_code,
-      address.country || 'USA'
+      address.country || 'USA',
+      address.sales_tax_id || null
     );
 
     return this.getById(result.lastInsertRowid);
@@ -97,8 +108,10 @@ const AddressModel = {
           address_line2 = ?,
           city = ?,
           state = ?,
+          county = ?,
           postal_code = ?,
-          country = ?
+          country = ?,
+          sales_tax_id = ?
       WHERE id = ?
     `);
     
@@ -107,8 +120,10 @@ const AddressModel = {
       address.address_line2 || null,
       address.city,
       address.state,
+      address.county || null,
       address.postal_code,
       address.country || 'USA',
+      address.sales_tax_id || null,
       id
     );
 
@@ -210,7 +225,8 @@ const AddressModel = {
     const parts = [
       address.address_line1,
       address.address_line2,
-      `${address.city}, ${address.state} ${address.postal_code}`,
+      address.county ? `${address.city}, ${address.county}, ${address.state} ${address.postal_code}` :
+                       `${address.city}, ${address.state} ${address.postal_code}`,
       address.country !== 'USA' ? address.country : null
     ].filter(Boolean);
     
@@ -228,7 +244,8 @@ const AddressModel = {
     const lines = [
       address.address_line1,
       address.address_line2,
-      `${address.city}, ${address.state} ${address.postal_code}`,
+      address.county ? `${address.city}, ${address.county}, ${address.state} ${address.postal_code}` :
+                       `${address.city}, ${address.state} ${address.postal_code}`,
       address.country !== 'USA' ? address.country : null
     ].filter(Boolean);
     

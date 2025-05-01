@@ -1,5 +1,6 @@
 const AddressModel = require('../models/address');
 const PartyModel = require('../models/party');
+const SalesTaxModel = require('../models/sales_tax');
 
 const AddressController = {
   /**
@@ -109,9 +110,11 @@ const AddressController = {
         address_line1, 
         address_line2, 
         city, 
-        state, 
+        state,
+        county,
         postal_code, 
         country,
+        sales_tax_id,
         party_id,
         address_type,
         is_default
@@ -121,13 +124,23 @@ const AddressController = {
         return res.status(400).json({ error: 'Address line 1, city, state, and postal code are required' });
       }
 
+      // Check if sales_tax_id is valid if provided
+      if (sales_tax_id) {
+        const salesTax = SalesTaxModel.getById(sales_tax_id);
+        if (!salesTax) {
+          return res.status(404).json({ error: 'Sales tax not found' });
+        }
+      }
+
       const addressData = {
         address_line1,
         address_line2,
         city,
         state,
+        county,
         postal_code,
-        country
+        country,
+        sales_tax_id
       };
 
       // Create the address
@@ -178,9 +191,11 @@ const AddressController = {
         address_line1, 
         address_line2, 
         city, 
-        state, 
+        state,
+        county,
         postal_code, 
-        country
+        country,
+        sales_tax_id
       } = req.body;
 
       // Check if the address exists
@@ -193,13 +208,23 @@ const AddressController = {
         return res.status(400).json({ error: 'Address line 1, city, state, and postal code are required' });
       }
 
+      // Check if sales_tax_id is valid if provided
+      if (sales_tax_id) {
+        const salesTax = SalesTaxModel.getById(sales_tax_id);
+        if (!salesTax) {
+          return res.status(404).json({ error: 'Sales tax not found' });
+        }
+      }
+
       const addressData = {
         address_line1,
         address_line2,
         city,
         state,
+        county,
         postal_code,
-        country
+        country,
+        sales_tax_id
       };
 
       const updatedAddress = AddressModel.update(id, addressData);

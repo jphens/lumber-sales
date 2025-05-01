@@ -1,5 +1,6 @@
 const CustomerModel = require('../models/customer');
 const PartyModel = require('../models/party');
+const ShipViaModel = require('../models/ship_via');
 
 const CustomerController = {
   /**
@@ -91,8 +92,8 @@ const CustomerController = {
         party_id, 
         default_billing_address_id, 
         default_shipping_address_id,
-        tax_exempt,
-        tax_id 
+        default_ship_via_id,
+        sales_tax_exempt
       } = req.body;
 
       if (!party_id) {
@@ -111,12 +112,20 @@ const CustomerController = {
         return res.status(400).json({ error: 'This party is already a customer' });
       }
 
+      // Check if ship_via_id is valid if provided
+      if (default_ship_via_id) {
+        const shipVia = ShipViaModel.getById(default_ship_via_id);
+        if (!shipVia) {
+          return res.status(404).json({ error: 'Shipping method not found' });
+        }
+      }
+
       const customer = {
         party_id,
         default_billing_address_id,
         default_shipping_address_id,
-        tax_exempt,
-        tax_id
+        default_ship_via_id,
+        sales_tax_exempt: sales_tax_exempt === true
       };
 
       const newCustomer = CustomerModel.create(customer);
@@ -138,8 +147,8 @@ const CustomerController = {
       const { 
         default_billing_address_id, 
         default_shipping_address_id,
-        tax_exempt,
-        tax_id 
+        default_ship_via_id,
+        sales_tax_exempt
       } = req.body;
 
       // Check if the customer exists
@@ -148,11 +157,19 @@ const CustomerController = {
         return res.status(404).json({ error: 'Customer not found' });
       }
 
+      // Check if ship_via_id is valid if provided
+      if (default_ship_via_id) {
+        const shipVia = ShipViaModel.getById(default_ship_via_id);
+        if (!shipVia) {
+          return res.status(404).json({ error: 'Shipping method not found' });
+        }
+      }
+
       const customer = {
         default_billing_address_id,
         default_shipping_address_id,
-        tax_exempt,
-        tax_id
+        default_ship_via_id,
+        sales_tax_exempt: sales_tax_exempt === true
       };
 
       const updatedCustomer = CustomerModel.update(id, customer);

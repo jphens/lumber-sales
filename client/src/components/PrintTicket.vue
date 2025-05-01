@@ -39,7 +39,8 @@
               <strong>Invoice #:</strong> {{ ticket.invoice_number }}<br>
               <strong>Ticket #:</strong> {{ ticket.id }}<br>
               <strong>Date:</strong> {{ formatDate(ticket.date) }}<br>
-              <strong>Status:</strong> {{ capitalize(ticket.status) }}
+              <strong>Status:</strong> {{ capitalize(ticket.status) }}<br>
+              <strong>Ship Via:</strong> {{ ticket.ship_via_name || 'Not specified' }}
               
               <div v-if="shippingAddress" class="mt-2">
                 <strong>Shipping Address:</strong><br>
@@ -61,6 +62,7 @@
                 <th>Length (ft)</th>
                 <th>Board Feet</th>
                 <th>Price/MBF</th>
+                <th>Tax</th>
                 <th>Total</th>
               </tr>
             </thead>
@@ -72,6 +74,7 @@
                 <td>{{ item.length }}</td>
                 <td>{{ formatNumber(item.total_bf) }}</td>
                 <td>${{ formatCurrency(item.price_per_mbf) }}</td>
+                <td>${{ formatCurrency(item.tax_amount || 0) }}</td>
                 <td>${{ formatCurrency(item.total_amount) }}</td>
               </tr>
             </tbody>
@@ -88,7 +91,7 @@
                     <td>${{ formatCurrency(calculateSubtotal()) }}</td>
                   </tr>
                   <tr>
-                    <th>Tax:</th>
+                    <th>Tax ({{ formatTaxInfo() }}):</th>
                     <td>${{ formatCurrency(ticket.total_tax) }}</td>
                   </tr>
                   <tr>
@@ -135,6 +138,10 @@ export default {
         customerPhone: '',
         date: '',
         status: 'draft',
+        ship_via_name: '',
+        ship_via_description: '',
+        sales_tax_name: '',
+        sales_tax_rate: 0,
         items: [],
         total_bf: 0,
         total_tax: 0,
@@ -167,6 +174,7 @@ export default {
             address_line2: this.ticket.billingAddress2,
             city: this.ticket.billingCity,
             state: this.ticket.billingState,
+            county: this.ticket.billingCounty,
             postal_code: this.ticket.billingPostalCode
           };
         }
@@ -177,6 +185,7 @@ export default {
             address_line2: this.ticket.shippingAddress2,
             city: this.ticket.shippingCity,
             state: this.ticket.shippingState,
+            county: this.ticket.shippingCounty,
             postal_code: this.ticket.shippingPostalCode
           };
         }
@@ -195,10 +204,17 @@ export default {
       return date.toLocaleDateString();
     },
     formatNumber(value) {
-      return Number(value).toFixed(2);
+      return Number(value || 0).toFixed(2);
     },
     formatCurrency(value) {
-      return Number(value).toFixed(2);
+      return Number(value || 0).toFixed(2);
+    },
+    formatTaxInfo() {
+      if (this.ticket.sales_tax_name) {
+        const taxRate = (Number(this.ticket.sales_tax_rate || 0) * 100).toFixed(2);
+        return `${this.ticket.sales_tax_name} ${taxRate}%`;
+      }
+      return this.ticket.total_tax > 0 ? 'Sales Tax' : 'Tax Exempt';
     },
     formatAddressMultiLine(address) {
       if (!address) return [];
@@ -211,7 +227,11 @@ export default {
         lines.push(address.address_line2);
       }
       
-      lines.push(`${address.city}, ${address.state} ${address.postal_code}`);
+      let cityLine = `${address.city}, ${address.state} ${address.postal_code}`;
+      if (address.county) {
+        cityLine = `${address.city}, ${address.county} County, ${address.state} ${address.postal_code}`;
+      }
+      lines.push(cityLine);
       
       if (address.country && address.country !== 'USA') {
         lines.push(address.country);

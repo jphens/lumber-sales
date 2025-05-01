@@ -15,7 +15,7 @@
       "install:server": "cd server && npm install",
       "build": "cd client && npm run build",
       "start": "cd server && npm run start",
-      "clearAndSeed": "node server/src/scripts/seed-data.js"
+      "seed": "node server/src/scripts/seed-data.js"
     },
     "devDependencies": {
       "concurrently": "^7.6.0"

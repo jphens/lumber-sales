@@ -8,9 +8,11 @@ const CustomerModel = {
   getAll() {
     const stmt = db.prepare(`
       SELECT c.*, 
-             p.party_number, p.name, p.list_name, p.phone, p.email, p.notes
+             p.party_number, p.name, p.list_name, p.phone, p.email, p.notes,
+             sv.name as ship_via_name, sv.description as ship_via_description
       FROM customers c
       JOIN parties p ON c.party_id = p.id
+      LEFT JOIN ship_via sv ON c.default_ship_via_id = sv.id
       ORDER BY p.list_name ASC
     `);
     return stmt.all();
@@ -24,9 +26,11 @@ const CustomerModel = {
   getById(id) {
     const stmt = db.prepare(`
       SELECT c.*, 
-             p.party_number, p.name, p.list_name, p.phone, p.email, p.notes
+             p.party_number, p.name, p.list_name, p.phone, p.email, p.notes,
+             sv.name as ship_via_name, sv.description as ship_via_description
       FROM customers c
       JOIN parties p ON c.party_id = p.id
+      LEFT JOIN ship_via sv ON c.default_ship_via_id = sv.id
       WHERE c.id = ?
     `);
     return stmt.get(id);
@@ -40,9 +44,11 @@ const CustomerModel = {
   getByPartyId(partyId) {
     const stmt = db.prepare(`
       SELECT c.*, 
-             p.party_number, p.name, p.list_name, p.phone, p.email, p.notes
+             p.party_number, p.name, p.list_name, p.phone, p.email, p.notes,
+             sv.name as ship_via_name, sv.description as ship_via_description
       FROM customers c
       JOIN parties p ON c.party_id = p.id
+      LEFT JOIN ship_via sv ON c.default_ship_via_id = sv.id
       WHERE c.party_id = ?
     `);
     return stmt.get(partyId);
@@ -57,7 +63,7 @@ const CustomerModel = {
     const stmt = db.prepare(`
       INSERT INTO customers (
         party_id, default_billing_address_id, default_shipping_address_id,
-        tax_exempt, tax_id
+        default_ship_via_id, sales_tax_exempt
       )
       VALUES (?, ?, ?, ?, ?)
     `);
@@ -66,8 +72,8 @@ const CustomerModel = {
       customer.party_id,
       customer.default_billing_address_id || null,
       customer.default_shipping_address_id || null,
-      customer.tax_exempt ? 1 : 0,
-      customer.tax_id || null
+      customer.default_ship_via_id || null,
+      customer.sales_tax_exempt ? 1 : 0
     );
 
     // Add customer to party_type_mappings
@@ -87,16 +93,16 @@ const CustomerModel = {
       UPDATE customers
       SET default_billing_address_id = ?,
           default_shipping_address_id = ?,
-          tax_exempt = ?,
-          tax_id = ?
+          default_ship_via_id = ?,
+          sales_tax_exempt = ?
       WHERE id = ?
     `);
     
     stmt.run(
       customer.default_billing_address_id || null,
       customer.default_shipping_address_id || null,
-      customer.tax_exempt ? 1 : 0,
-      customer.tax_id || null,
+      customer.default_ship_via_id || null,
+      customer.sales_tax_exempt ? 1 : 0,
       id
     );
 
@@ -137,7 +143,10 @@ const CustomerModel = {
 
     // Get billing address
     const billingAddressStmt = db.prepare(`
-      SELECT * FROM addresses WHERE id = ?
+      SELECT a.*, st.name as tax_name, st.tax_rate
+      FROM addresses a
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
+      WHERE a.id = ?
     `);
     const billingAddress = customer.default_billing_address_id 
       ? billingAddressStmt.get(customer.default_billing_address_id)
@@ -145,7 +154,10 @@ const CustomerModel = {
 
     // Get shipping address
     const shippingAddressStmt = db.prepare(`
-      SELECT * FROM addresses WHERE id = ?
+      SELECT a.*, st.name as tax_name, st.tax_rate
+      FROM addresses a
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
+      WHERE a.id = ?
     `);
     const shippingAddress = customer.default_shipping_address_id 
       ? shippingAddressStmt.get(customer.default_shipping_address_id)
@@ -153,18 +165,28 @@ const CustomerModel = {
 
     // Get all customer addresses
     const allAddressesStmt = db.prepare(`
-      SELECT a.*, pa.address_type, pa.is_default
+      SELECT a.*, pa.address_type, pa.is_default, st.name as tax_name, st.tax_rate
       FROM addresses a
       JOIN party_addresses pa ON a.id = pa.address_id
+      LEFT JOIN sales_tax st ON a.sales_tax_id = st.id
       WHERE pa.party_id = ?
     `);
     const allAddresses = allAddressesStmt.all(customer.party_id);
+
+    // Get default shipping method
+    const shipViaStmt = db.prepare(`
+      SELECT * FROM ship_via WHERE id = ?
+    `);
+    const defaultShipVia = customer.default_ship_via_id
+      ? shipViaStmt.get(customer.default_ship_via_id)
+      : null;
 
     return {
       ...customer,
       billingAddress,
       shippingAddress,
-      allAddresses
+      allAddresses,
+      defaultShipVia
     };
   },
 

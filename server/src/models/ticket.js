@@ -7,9 +7,13 @@ const TicketModel = {
    */
   getAll() {
     const stmt = db.prepare(`
-      SELECT t.*, p.name as partyName, p.phone as partyPhone
+      SELECT t.*, p.name as partyName, p.phone as partyPhone,
+             sv.name as ship_via_name, 
+             st.name as sales_tax_name, st.tax_rate as sales_tax_rate
       FROM tickets t
       LEFT JOIN parties p ON t.party_id = p.id
+      LEFT JOIN ship_via sv ON t.ship_via_id = sv.id
+      LEFT JOIN sales_tax st ON t.sales_tax_id = st.id
       ORDER BY t.created_at DESC
     `);
     return stmt.all();
@@ -30,16 +34,26 @@ const TicketModel = {
              ba.address_line2 as billingAddress2,
              ba.city as billingCity,
              ba.state as billingState,
+             ba.county as billingCounty,
              ba.postal_code as billingPostalCode,
              sa.address_line1 as shippingAddress1,
              sa.address_line2 as shippingAddress2,
              sa.city as shippingCity,
              sa.state as shippingState,
-             sa.postal_code as shippingPostalCode
+             sa.county as shippingCounty,
+             sa.postal_code as shippingPostalCode,
+             sv.name as ship_via_name, 
+             sv.description as ship_via_description,
+             st.name as sales_tax_name, 
+             st.tax_rate as sales_tax_rate,
+             st.county as sales_tax_county, 
+             st.state as sales_tax_state
       FROM tickets t
       LEFT JOIN parties p ON t.party_id = p.id
       LEFT JOIN addresses ba ON t.billing_address_id = ba.id
       LEFT JOIN addresses sa ON t.shipping_address_id = sa.id
+      LEFT JOIN ship_via sv ON t.ship_via_id = sv.id
+      LEFT JOIN sales_tax st ON t.sales_tax_id = st.id
       WHERE t.id = ?
     `);
     const ticket = ticketStmt.get(id);
@@ -81,93 +95,96 @@ const TicketModel = {
     return checkSeq.seq + 1;
   },
 
-    /**
+  /**
    * Create a new ticket
    * @param {Object} ticket - Ticket object
    * @param {Array} items - Array of ticket item objects
    * @returns {Object} Created ticket
    */
-    create(ticket, items) {
-      // Start a transaction
-      const createTicket = db.transaction((ticket, items) => {
-        // Get the next invoice number
-        const nextInvoiceNumber = this.getNextInvoiceNumber();
-        
-        // Insert the ticket
-        const ticketStmt = db.prepare(`
-          INSERT INTO tickets (
-            id, invoice_number, party_id, billing_address_id, shipping_address_id,
-            customerName, customerPhone, date, status, 
-            total_bf, total_tax, total_amount
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        
-        ticketStmt.run(
-          ticket.id, 
-          nextInvoiceNumber,
-          ticket.party_id, 
-          ticket.billing_address_id,
-          ticket.shipping_address_id,
-          ticket.customerName, 
-          ticket.customerPhone, 
-          ticket.date,
-          ticket.status || 'draft',
-          ticket.total_bf || 0,
-          ticket.total_tax || 0,
-          ticket.total_amount || 0
-        );
-  
-        // Update the sequence
-        db.prepare(`
-          UPDATE sqlite_sequence 
-          SET seq = ? 
-          WHERE name = 'tickets'
-        `).run(nextInvoiceNumber);
-  
-        // Insert each item
-        const itemStmt = db.prepare(`
-          INSERT INTO ticket_items (
-            ticketId, species_id, quantity, width, thickness, length, 
-            price_per_mbf, total_bf, total_tax, total_amount
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-  
-        for (const item of items) {
-          // Convert empty species_id to null for database foreign key constraint
-          const speciesId = item.species_id === '' ? null : item.species_id;
-          
-          itemStmt.run(
-            ticket.id,
-            speciesId, // Use null instead of empty string
-            item.quantity,
-            item.width,
-            item.thickness,
-            item.length,
-            item.price_per_mbf,
-            item.total_bf || 0,
-            item.total_tax || 0,
-            item.total_amount || 0
-          );
-        }
-  
-        // Return the created ticket with its new invoice_number
-        return this.getById(ticket.id);
-      });
-  
-      // Execute the transaction
-      return createTicket(ticket, items);
-    },
+  create(ticket, items) {
+    // Start a transaction
+    const createTicket = db.transaction((ticket, items) => {
+      // Get the next invoice number
+      const nextInvoiceNumber = this.getNextInvoiceNumber();
+      
+      // Insert the ticket
+      const ticketStmt = db.prepare(`
+        INSERT INTO tickets (
+          id, invoice_number, party_id, billing_address_id, shipping_address_id,
+          ship_via_id, sales_tax_id, customerName, customerPhone, date, status, 
+          total_bf, total_tax, total_amount
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      ticketStmt.run(
+        ticket.id, 
+        nextInvoiceNumber,
+        ticket.party_id, 
+        ticket.billing_address_id,
+        ticket.shipping_address_id,
+        ticket.ship_via_id || null,
+        ticket.sales_tax_id || null,
+        ticket.customerName, 
+        ticket.customerPhone, 
+        ticket.date,
+        ticket.status || 'draft',
+        ticket.total_bf || 0,
+        ticket.total_tax || 0,
+        ticket.total_amount || 0
+      );
 
-   /**
+      // Update the sequence
+      db.prepare(`
+        UPDATE sqlite_sequence 
+        SET seq = ? 
+        WHERE name = 'tickets'
+      `).run(nextInvoiceNumber);
+
+      // Insert each item
+      const itemStmt = db.prepare(`
+        INSERT INTO ticket_items (
+          ticketId, species_id, quantity, width, thickness, length, 
+          price_per_mbf, total_bf, tax_amount, total_tax, total_amount
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const item of items) {
+        // Convert empty species_id to null for database foreign key constraint
+        const speciesId = item.species_id === '' ? null : item.species_id;
+        
+        itemStmt.run(
+          ticket.id,
+          speciesId, // Use null instead of empty string
+          item.quantity,
+          item.width,
+          item.thickness,
+          item.length,
+          item.price_per_mbf,
+          item.total_bf || 0,
+          item.tax_amount || 0,
+          item.total_tax || 0,
+          item.total_amount || 0
+        );
+      }
+
+      // Return the created ticket with its new invoice_number
+      return this.getById(ticket.id);
+    });
+
+    // Execute the transaction
+    return createTicket(ticket, items);
+  },
+
+  /**
    * Update a ticket
    * @param {string} id - Ticket ID
    * @param {Object} ticket - Updated ticket data
    * @param {Array} items - Updated ticket items
    * @returns {Object} Updated ticket
    */
-   update(id, ticket, items) {
+  update(id, ticket, items) {
     // Start a transaction
     const updateTicket = db.transaction((id, ticket, items) => {
       // Update the ticket
@@ -176,6 +193,8 @@ const TicketModel = {
         SET party_id = ?,
             billing_address_id = ?,
             shipping_address_id = ?,
+            ship_via_id = ?,
+            sales_tax_id = ?,
             customerName = ?,
             customerPhone = ?,
             date = ?,
@@ -191,6 +210,8 @@ const TicketModel = {
         ticket.party_id,
         ticket.billing_address_id,
         ticket.shipping_address_id,
+        ticket.ship_via_id || null,
+        ticket.sales_tax_id || null,
         ticket.customerName,
         ticket.customerPhone,
         ticket.date,
@@ -211,9 +232,9 @@ const TicketModel = {
       const itemStmt = db.prepare(`
         INSERT INTO ticket_items (
           ticketId, species_id, quantity, width, thickness, length, 
-          price_per_mbf, total_bf, total_tax, total_amount
+          price_per_mbf, total_bf, tax_amount, total_tax, total_amount
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const item of items) {
@@ -229,6 +250,7 @@ const TicketModel = {
           item.length,
           item.price_per_mbf,
           item.total_bf || 0,
+          item.tax_amount || 0,
           item.total_tax || 0,
           item.total_amount || 0
         );

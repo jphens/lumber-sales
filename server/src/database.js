@@ -54,18 +54,19 @@ const initDb = () => {
     )
   `);
 
-  // Create customers table
-  db.exec(`
+   // Create customers table (updated to remove tax_id and add sales_tax_exempt and default_ship_via_id)
+   db.exec(`
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       party_id INTEGER NOT NULL,
       default_billing_address_id INTEGER,
       default_shipping_address_id INTEGER,
-      tax_exempt BOOLEAN DEFAULT 0,
-      tax_id TEXT,
+      default_ship_via_id INTEGER,
+      sales_tax_exempt BOOLEAN DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (party_id) REFERENCES parties (id) ON DELETE CASCADE
+      FOREIGN KEY (party_id) REFERENCES parties (id) ON DELETE CASCADE,
+      FOREIGN KEY (default_ship_via_id) REFERENCES ship_via (id)
     )
   `);
 
@@ -82,18 +83,46 @@ const initDb = () => {
     )
   `);
 
-  // Create addresses table
-  db.exec(`
+ // Create sales_tax table
+ db.exec(`
+  CREATE TABLE IF NOT EXISTS sales_tax (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    county TEXT NOT NULL,
+    state TEXT NOT NULL,
+    tax_rate REAL NOT NULL,
+    effective_date TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+ // Create ship_via table
+ db.exec(`
+  CREATE TABLE IF NOT EXISTS ship_via (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+   // Create addresses table (updated to include county and sales_tax_id)
+   db.exec(`
     CREATE TABLE IF NOT EXISTS addresses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       address_line1 TEXT NOT NULL,
       address_line2 TEXT,
       city TEXT NOT NULL,
       state TEXT NOT NULL,
+      county TEXT,
       postal_code TEXT NOT NULL,
       country TEXT DEFAULT 'USA',
+      sales_tax_id INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sales_tax_id) REFERENCES sales_tax (id)
     )
   `);
 
@@ -133,14 +162,16 @@ const initDb = () => {
   // Drop the existing ticket_items table if it exists
   db.exec(`DROP TABLE IF EXISTS ticket_items`);
 
- // Create tickets table with new fields
- db.exec(`
+ // Create tickets table with new fields including ship_via_id and sales_tax_id
+db.exec(`
   CREATE TABLE IF NOT EXISTS tickets (
     id TEXT PRIMARY KEY,
     invoice_number INTEGER UNIQUE,
     party_id INTEGER NOT NULL,
     billing_address_id INTEGER,
     shipping_address_id INTEGER,
+    ship_via_id INTEGER,
+    sales_tax_id INTEGER,
     customerName TEXT NOT NULL,
     customerPhone TEXT,
     date TEXT NOT NULL,
@@ -152,9 +183,11 @@ const initDb = () => {
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (party_id) REFERENCES parties (id),
     FOREIGN KEY (billing_address_id) REFERENCES addresses (id),
-    FOREIGN KEY (shipping_address_id) REFERENCES addresses (id)
+    FOREIGN KEY (shipping_address_id) REFERENCES addresses (id),
+    FOREIGN KEY (ship_via_id) REFERENCES ship_via (id),
+    FOREIGN KEY (sales_tax_id) REFERENCES sales_tax (id)
   )
-`);
+ `);
 
  // Create the sequence for invoice_number starting at 29999 (so first one will be 30000)
  try {
@@ -174,8 +207,8 @@ const initDb = () => {
   console.log('Error setting invoice number sequence:', error.message);
 }
 
-  // Create ticket_items table with new fields
-db.exec(`
+ // Create ticket_items table with new fields including tax_amount
+ db.exec(`
   CREATE TABLE IF NOT EXISTS ticket_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ticketId TEXT NOT NULL,
@@ -186,6 +219,7 @@ db.exec(`
     length REAL NOT NULL,
     price_per_mbf REAL NOT NULL,
     total_bf REAL DEFAULT 0,
+    tax_amount REAL DEFAULT 0,
     total_tax REAL DEFAULT 0,
     total_amount REAL DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
