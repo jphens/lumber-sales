@@ -57,14 +57,14 @@ const seedSalesTax = () => {
   
   const salesTaxes = [
     {
-      name: 'Gilmer County Sales Tax',
+      name: 'Gilmer County, GA',
       county: 'Gilmer',
       state: 'GA',
-      tax_rate: 0.07,
+      tax_rate: 0.05,
       effective_date: '2020-01-01'
     },
     {
-      name: 'Fannin County Sales Tax',
+      name: 'Fannin County, GA',
       county: 'Fannin',
       state: 'GA',
       tax_rate: 0.07,
