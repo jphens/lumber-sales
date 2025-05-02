@@ -62,6 +62,7 @@
                 <th>Length (ft)</th>
                 <th>Board Feet</th>
                 <th>Price/MBF</th>
+                <th>Amount</th>
                 <th>Tax</th>
                 <th>Total</th>
               </tr>
@@ -74,8 +75,9 @@
                 <td>{{ item.length }}</td>
                 <td>{{ formatNumber(item.total_bf) }}</td>
                 <td>${{ formatCurrency(item.price_per_mbf) }}</td>
-                <td>${{ formatCurrency(item.tax_amount || 0) }}</td>
                 <td>${{ formatCurrency(item.total_amount) }}</td>
+                <td>${{ formatCurrency(item.tax_amount || 0) }}</td>
+                <td>${{ formatCurrency(Number(item.total_amount) + Number(item.tax_amount)) }}</td>
               </tr>
             </tbody>
           </table>
@@ -88,7 +90,7 @@
                 <tbody>
                   <tr>
                     <th>Subtotal:</th>
-                    <td>${{ formatCurrency(calculateSubtotal()) }}</td>
+                    <td>${{ formatCurrency(ticket.total_amount) }}</td>
                   </tr>
                   <tr>
                     <th>Tax ({{ formatTaxInfo() }}):</th>
@@ -96,7 +98,7 @@
                   </tr>
                   <tr>
                     <th>Total:</th>
-                    <td>${{ formatCurrency(ticket.total_amount) }}</td>
+                    <td>${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax)) }}</td>
                   </tr>
                   <tr>
                     <th>Total Board Feet:</th>
@@ -197,7 +199,9 @@ export default {
       }
     },
     calculateSubtotal() {
-      return this.ticket.total_amount - this.ticket.total_tax;
+      // Since total_amount now represents the base amount (not including tax),
+      // we can just return it directly
+      return this.ticket.total_amount;
     },
     formatDate(dateString) {
       const date = new Date(dateString);

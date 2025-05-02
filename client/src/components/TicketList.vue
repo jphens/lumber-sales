@@ -45,6 +45,8 @@
             <th>Customer</th>
             <th>Status</th>
             <th>Board Feet</th>
+            <th>Subtotal</th>
+            <th>Tax</th>
             <th>Total</th>
             <th>Actions</th>
           </tr>
@@ -61,6 +63,8 @@
             </td>
             <td>{{ formatNumber(ticket.total_bf) }}</td>
             <td>${{ formatCurrency(ticket.total_amount) }}</td>
+            <td>${{ formatCurrency(ticket.total_tax) }}</td>
+            <td>${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax)) }}</td>
             <td>
               <button @click="editTicket(ticket.id)" class="btn btn-primary btn-sm">Edit</button>
               <button @click="printTicket(ticket.id)" class="btn btn-info btn-sm">Print</button>

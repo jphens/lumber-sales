@@ -128,7 +128,7 @@
                 <th>BF</th>
                 <th>Price/MBF</th>
                 <th>Tax</th>
-                <th>Total</th>
+                <th>Amount</th>
                 <th></th>
               </tr>
             </thead>
@@ -207,7 +207,7 @@
           <div class="totals-content">
             <div class="total-row">
               <span class="label">Subtotal:</span>
-              <span class="value">${{ formatCurrency(calculateSubtotal()) }}</span>
+              <span class="value">${{ formatCurrency(ticket.total_amount) }}</span>
             </div>
             <div class="total-row">
               <span class="label">Tax:</span>
@@ -215,7 +215,7 @@
             </div>
             <div class="total-row">
               <span class="label">Total:</span>
-              <span class="value">${{ formatCurrency(ticket.total_amount) }}</span>
+              <span class="value">${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax)) }}</span>
             </div>
             <div class="total-row">
               <span class="label">Total Board Feet:</span>
@@ -296,7 +296,6 @@ export default {
         price_per_mbf: 1000.00,
         total_bf: 0,
         tax_amount: 0,
-        total_tax: 0,
         total_amount: 0
       }
     };
@@ -384,8 +383,8 @@ export default {
       const taxRate = this.customerIsTaxExempt ? 0 : (this.selectedSalesTax ? this.selectedSalesTax.tax_rate : 0);
       item.tax_amount = amount * taxRate;
       
-      // Set total amount
-      item.total_amount = amount + item.tax_amount;
+      // Set total amount (now only the base amount, excluding tax)
+      item.total_amount = amount;
       
       this.calculateTotals();
     },
@@ -415,7 +414,9 @@ export default {
       }
     },
     calculateSubtotal() {
-      return this.ticket.items.reduce((sum, item) => sum + (item.total_amount - item.tax_amount), 0);
+      // Since total_amount now represents the base amount (not including tax),
+      // we can just return it directly
+      return this.ticket.total_amount;
     },
     calculateTotals() {
       // Calculate total board feet
@@ -424,8 +425,9 @@ export default {
       // Calculate total tax
       this.ticket.total_tax = this.ticket.items.reduce((sum, item) => sum + item.tax_amount, 0);
       
-      // Calculate total amount
-      this.ticket.total_amount = this.ticket.items.reduce((sum, item) => sum + item.total_amount, 0);
+      // Calculate total amount (base amount, not including tax)
+      const baseAmount = this.ticket.items.reduce((sum, item) => sum + item.total_amount, 0);
+      this.ticket.total_amount = baseAmount;
     },
     async saveTicket() {
       this.saving = true;
