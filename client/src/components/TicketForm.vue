@@ -35,7 +35,7 @@
           </div>
           <div class="form-group">
             <label>Due Date</label>
-            <input type="date" v-model="dueDate" class="form-control" />
+            <input type="date" v-model="ticket.due_date" class="form-control" />
           </div>
           <div class="form-group">
             <label>Invoice #</label>
@@ -51,7 +51,7 @@
           </div>
           <div class="form-group">
             <label>Type</label>
-            <select v-model="ticketType" class="form-control">
+            <select v-model="ticket.ticket_type" class="form-control">
               <option value="invoice">Invoice</option>
               <option value="quote">Quote</option>
               <option value="po">Purchase Order</option>
@@ -69,7 +69,7 @@
           </div>
           <div class="form-group">
             <label>Customer PO#</label>
-            <input v-model="customerPO" class="form-control" />
+            <input v-model="ticket.purchase_order" class="form-control" />
           </div>
         </div>
       </div>
@@ -97,7 +97,8 @@
         <div class="shipping-details">
           <div class="form-group">
             <label>Customer Email</label>
-            <input v-model="customerEmail" class="form-control" />
+            <input v-model="customerData.email" class="form-control" v-if="customerData" />
+            <input class="form-control" disabled v-else placeholder="Select a customer first" />
           </div>
           <div class="form-group">
             <label>Customer Phone</label>
@@ -113,7 +114,7 @@
           </div>
           <div class="form-group">
             <label>Attention</label>
-            <input v-model="attention" class="form-control" />
+            <input v-model="ticket.shipping_attention" class="form-control" />
           </div>
           <div class="form-group hidden">
             <label>Sales Tax</label>
@@ -210,7 +211,7 @@
               </div>
               <div class="total-row">
                 <span class="label">Freight:</span>
-                <span class="value">$<input type="number" v-model.number="freight" class="freight-input"
+                <span class="value">$<input type="number" v-model.number="ticket.total_freight" class="freight-input"
                     @change="calculateTotals" /></span>
               </div>
               <div class="total-row">
@@ -269,20 +270,17 @@ export default {
         customerName: '',
         customerPhone: '',
         date: new Date().toISOString().split('T')[0],
+        due_date: this.calculateDueDate(), // Connect the due date
+        ticket_type: 'invoice', // Connect the ticket type
+        purchase_order: '', // Connect the customer PO#
+        shipping_attention: '', // Connect the attention field
+        total_freight: 0, // Connect the freight field
         status: 'draft',
         total_bf: 0,
         total_tax: 0,
         total_amount: 0,
         items: []
       },
-      // New fields not connected to data model yet
-      dueDate: this.calculateDueDate(),
-      ticketType: 'invoice',
-      customerPO: '',
-      customerEmail: '',
-      attention: '',
-      freight: 0,
-
       isEditMode: false,
       loading: false,
       saving: false,
@@ -436,7 +434,7 @@ export default {
       return this.ticket.items.reduce((sum, item) => sum + (item.total_amount - item.tax_amount), 0);
     },
     calculateGrandTotal() {
-      return this.ticket.total_amount + (this.freight || 0);
+      return this.ticket.total_amount + (this.ticket.total_freight || 0);
     },
     calculateTotals() {
       // Calculate total board feet
@@ -504,20 +502,17 @@ export default {
         customerName: '',
         customerPhone: '',
         date: new Date().toISOString().split('T')[0],
+        due_date: this.calculateDueDate(),
+        ticket_type: 'invoice',
+        purchase_order: '',
+        shipping_attention: '',
+        total_freight: 0,
         status: 'draft',
         total_bf: 0,
         total_tax: 0,
         total_amount: 0,
         items: []
       };
-
-      // Reset the new fields
-      this.dueDate = this.calculateDueDate();
-      this.ticketType = 'invoice';
-      this.customerPO = '';
-      this.customerEmail = '';
-      this.attention = '';
-      this.freight = 0;
 
       this.addItem();
       this.customerSearch = '';
@@ -537,10 +532,12 @@ export default {
         const ticket = await TicketService.getTicket(this.id);
         this.ticket = ticket;
 
-        // Set due date to 30 days after ticket date
-        const ticketDate = new Date(ticket.date);
-        ticketDate.setDate(ticketDate.getDate() + 30);
-        this.dueDate = ticketDate.toISOString().split('T')[0];
+        // If no due_date is set in the database, set it to 30 days after ticket date
+        if (!ticket.due_date) {
+          const ticketDate = new Date(ticket.date);
+          ticketDate.setDate(ticketDate.getDate() + 30);
+          this.ticket.due_date = ticketDate.toISOString().split('T')[0];
+        }
 
         // If the ticket has a party_id, load customer addresses and data
         if (ticket.party_id) {
@@ -675,7 +672,6 @@ export default {
       this.ticket.party_id = customer.id;
       this.ticket.customerName = customer.name;
       this.ticket.customerPhone = customer.phone || '';
-      this.customerEmail = customer.email || '';
 
       // Load customer data, addresses, and default shipping method
       await this.loadCustomerData(customer.id);

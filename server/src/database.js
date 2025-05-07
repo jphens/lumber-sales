@@ -157,9 +157,11 @@ const initDb = () => {
 
   // Drop the existing tickets table if it exists
   // WARNING: This will delete all existing tickets!
+  // TODO: remove this line when deploying to production
   db.exec(`DROP TABLE IF EXISTS tickets`);
 
   // Drop the existing ticket_items table if it exists
+  // TODO: remove this line when deploying to production
   db.exec(`DROP TABLE IF EXISTS ticket_items`);
 
   // Create tickets table with new fields including ship_via_id and sales_tax_id
@@ -167,7 +169,7 @@ const initDb = () => {
   CREATE TABLE IF NOT EXISTS tickets (
     id TEXT PRIMARY KEY,
     invoice_number INTEGER UNIQUE,
-    party_id INTEGER NOT NULL,
+    party_id INTEGER,
     billing_address_id INTEGER,
     shipping_address_id INTEGER,
     ship_via_id INTEGER,
@@ -175,7 +177,12 @@ const initDb = () => {
     customerName TEXT NOT NULL,
     customerPhone TEXT,
     date TEXT NOT NULL,
-    status TEXT DEFAULT 'invoice', -- 'quote', 'purchase order', 'bill of lading', 'void'
+    due_date TEXT,
+    ticket_type TEXT DEFAULT 'invoice',
+    purchase_order TEXT,
+    shipping_attention TEXT,
+    total_freight REAL DEFAULT 0,
+    status TEXT DEFAULT 'draft',
     total_bf REAL DEFAULT 0,
     total_tax REAL DEFAULT 0,
     total_amount REAL DEFAULT 0,
@@ -187,7 +194,7 @@ const initDb = () => {
     FOREIGN KEY (ship_via_id) REFERENCES ship_via (id),
     FOREIGN KEY (sales_tax_id) REFERENCES sales_tax (id)
   )
- `);
+`);
 
   // Create the sequence for invoice_number starting at 29999 (so first one will be 30000)
   try {

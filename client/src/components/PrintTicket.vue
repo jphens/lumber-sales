@@ -3,17 +3,17 @@
     <div v-if="loading" class="loading d-print-none">
       Loading ticket data...
     </div>
-    
+
     <div v-else-if="error" class="error d-print-none">
       Error: {{ error }}
     </div>
-    
+
     <template v-else>
       <div class="print-controls d-print-none">
         <button @click="goBack" class="btn btn-secondary">Back</button>
         <button @click="print" class="btn btn-primary ml-2">Print</button>
       </div>
-      
+
       <div class="ticket-container">
         <div class="company-header">
           <h1>Lumber Sales Receipt</h1>
@@ -21,13 +21,14 @@
           <p>{{ companyInfo.address }}</p>
           <p>Phone: {{ companyInfo.phone }}</p>
         </div>
-        
+
         <div class="ticket-details">
           <div class="row">
             <div class="col-md-6">
               <strong>Customer:</strong> {{ ticket.customerName }}<br>
-              <strong>Phone:</strong> {{ ticket.customerPhone }}
-              
+              <strong>Phone:</strong> {{ ticket.customerPhone }}<br>
+              <strong>PO #:</strong> {{ ticket.purchase_order || 'None' }}
+
               <div v-if="billingAddress" class="mt-2">
                 <strong>Billing Address:</strong><br>
                 <div v-for="(line, index) in formatAddressMultiLine(billingAddress)" :key="`billing-${index}`">
@@ -39,9 +40,14 @@
               <strong>Invoice #:</strong> {{ ticket.invoice_number }}<br>
               <strong>Ticket #:</strong> {{ ticket.id }}<br>
               <strong>Date:</strong> {{ formatDate(ticket.date) }}<br>
+              <strong>Due Date:</strong> {{ formatDate(ticket.due_date) }}<br>
               <strong>Status:</strong> {{ capitalize(ticket.status) }}<br>
+              <strong>Type:</strong> {{ capitalize(ticket.ticket_type) }}<br>
               <strong>Ship Via:</strong> {{ ticket.ship_via_name || 'Not specified' }}
-              
+              <strong v-if="ticket.shipping_attention">
+                <br>Attention: {{ ticket.shipping_attention }}
+              </strong>
+
               <div v-if="shippingAddress" class="mt-2">
                 <strong>Shipping Address:</strong><br>
                 <div v-for="(line, index) in formatAddressMultiLine(shippingAddress)" :key="`shipping-${index}`">
@@ -51,7 +57,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="lumber-items mt-4">
           <table class="table table-bordered">
             <thead>
@@ -82,7 +88,7 @@
             </tbody>
           </table>
         </div>
-        
+
         <div class="totals mt-4">
           <div class="row">
             <div class="col-md-6 offset-md-6">
@@ -92,13 +98,18 @@
                     <th>Subtotal:</th>
                     <td>${{ formatCurrency(ticket.total_amount) }}</td>
                   </tr>
+                  <tr v-if="ticket.total_freight > 0">
+                    <th>Freight:</th>
+                    <td>${{ formatCurrency(ticket.total_freight) }}</td>
+                  </tr>
                   <tr>
                     <th>Tax ({{ formatTaxInfo() }}):</th>
                     <td>${{ formatCurrency(ticket.total_tax) }}</td>
                   </tr>
                   <tr>
                     <th>Total:</th>
-                    <td>${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax)) }}</td>
+                    <td>${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax) +
+                      Number(ticket.total_freight)) }}</td>
                   </tr>
                   <tr>
                     <th>Total Board Feet:</th>
@@ -109,9 +120,10 @@
             </div>
           </div>
         </div>
-        
+
         <div class="footer mt-5">
-          <p><em>Balance is due in 30-days from the invoice date. Past due balances are subject to a late payment charge of up to 1.5% per month, or 18% per year</em></p>
+          <p><em>Balance is due in 30-days from the invoice date. Past due balances are subject to a late payment charge
+              of up to 1.5% per month, or 18% per year</em></p>
           <p><em>Thank you for your business!</em></p>
         </div>
       </div>
@@ -139,6 +151,11 @@ export default {
         customerName: '',
         customerPhone: '',
         date: '',
+        due_date: '',
+        ticket_type: 'invoice',
+        purchase_order: '',
+        shipping_attention: '',
+        total_freight: 0,
         status: 'draft',
         ship_via_name: '',
         ship_via_description: '',
@@ -159,16 +176,16 @@ export default {
   methods: {
     async loadTicket() {
       this.loading = true;
-      
+
       try {
         this.ticket = await TicketService.getTicket(this.id);
-        
+
         if (!this.ticket) {
           this.error = 'Ticket not found!';
           this.$router.push('/list');
           return;
         }
-        
+
         // Extract billing and shipping addresses
         if (this.ticket.billingAddress1) {
           this.billingAddress = {
@@ -180,7 +197,7 @@ export default {
             postal_code: this.ticket.billingPostalCode
           };
         }
-        
+
         if (this.ticket.shippingAddress1) {
           this.shippingAddress = {
             address_line1: this.ticket.shippingAddress1,
@@ -190,6 +207,13 @@ export default {
             county: this.ticket.shippingCounty,
             postal_code: this.ticket.shippingPostalCode
           };
+        }
+
+        // Set due date to 30 days after ticket date if not provided
+        if (!this.ticket.due_date) {
+          const ticketDate = new Date(this.ticket.date);
+          ticketDate.setDate(ticketDate.getDate() + 30);
+          this.ticket.due_date = ticketDate.toISOString().split('T')[0];
         }
       } catch (error) {
         this.error = `Failed to load ticket: ${error.message}`;
@@ -204,6 +228,7 @@ export default {
       return this.ticket.total_amount;
     },
     formatDate(dateString) {
+      if (!dateString) return '';
       const date = new Date(dateString);
       return date.toLocaleDateString();
     },
@@ -222,25 +247,25 @@ export default {
     },
     formatAddressMultiLine(address) {
       if (!address) return [];
-      
+
       const lines = [
         address.address_line1
       ];
-      
+
       if (address.address_line2) {
         lines.push(address.address_line2);
       }
-      
+
       let cityLine = `${address.city}, ${address.state} ${address.postal_code}`;
       if (address.county) {
         cityLine = `${address.city}, ${address.county} County, ${address.state} ${address.postal_code}`;
       }
       lines.push(cityLine);
-      
+
       if (address.country && address.country !== 'USA') {
         lines.push(address.country);
       }
-      
+
       return lines;
     },
     getSpeciesName(item) {
@@ -291,7 +316,8 @@ export default {
   text-align: center;
 }
 
-.loading, .error {
+.loading,
+.error {
   text-align: center;
   margin: 20px 0;
   padding: 10px;
@@ -305,14 +331,17 @@ export default {
 }
 
 @media print {
-  .print-controls, .loading, .error {
+
+  .print-controls,
+  .loading,
+  .error {
     display: none;
   }
-  
+
   body {
     font-size: 12pt;
   }
-  
+
   .print-ticket {
     padding: 0;
   }

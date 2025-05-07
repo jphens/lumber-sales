@@ -79,18 +79,24 @@ const TicketModel = {
    */
   getNextInvoiceNumber() {
     // Check if we need to initialize the sequence
-    const checkSeq = db.prepare(`
+    const checkSeq = db
+      .prepare(
+        `
       SELECT seq FROM sqlite_sequence WHERE name = 'tickets'
-    `).get();
-    
+    `
+      )
+      .get();
+
     if (!checkSeq) {
       // Initialize the sequence to start at 30000 (first ticket will be 30000)
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO sqlite_sequence (name, seq) VALUES ('tickets', 29999)
-      `).run();
+      `
+      ).run();
       return 30000;
     }
-    
+
     // Get the current value and increment by 1
     return checkSeq.seq + 1;
   },
@@ -106,54 +112,62 @@ const TicketModel = {
     const createTicket = db.transaction((ticket, items) => {
       // Get the next invoice number
       const nextInvoiceNumber = this.getNextInvoiceNumber();
-      
+
       // Insert the ticket
       const ticketStmt = db.prepare(`
-        INSERT INTO tickets (
-          id, invoice_number, party_id, billing_address_id, shipping_address_id,
-          ship_via_id, sales_tax_id, customerName, customerPhone, date, status, 
-          total_bf, total_tax, total_amount
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
+      INSERT INTO tickets (
+        id, invoice_number, party_id, billing_address_id, shipping_address_id,
+        ship_via_id, sales_tax_id, customerName, customerPhone, date, due_date,
+        ticket_type, purchase_order, shipping_attention, total_freight,
+        status, total_bf, total_tax, total_amount
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
       ticketStmt.run(
-        ticket.id, 
+        ticket.id,
         nextInvoiceNumber,
-        ticket.party_id, 
+        ticket.party_id,
         ticket.billing_address_id,
         ticket.shipping_address_id,
         ticket.ship_via_id || null,
         ticket.sales_tax_id || null,
-        ticket.customerName, 
-        ticket.customerPhone, 
+        ticket.customerName,
+        ticket.customerPhone,
         ticket.date,
-        ticket.status || 'draft',
+        ticket.due_date || null,
+        ticket.ticket_type || "invoice",
+        ticket.purchase_order || null,
+        ticket.shipping_attention || null,
+        ticket.total_freight || 0,
+        ticket.status || "draft",
         ticket.total_bf || 0,
         ticket.total_tax || 0,
         ticket.total_amount || 0
       );
 
       // Update the sequence
-      db.prepare(`
-        UPDATE sqlite_sequence 
-        SET seq = ? 
-        WHERE name = 'tickets'
-      `).run(nextInvoiceNumber);
+      db.prepare(
+        `
+      UPDATE sqlite_sequence 
+      SET seq = ? 
+      WHERE name = 'tickets'
+    `
+      ).run(nextInvoiceNumber);
 
       // Insert each item
       const itemStmt = db.prepare(`
-        INSERT INTO ticket_items (
-          ticketId, species_id, quantity, width, thickness, length, 
-          price_per_mbf, total_bf, tax_amount, total_tax, total_amount
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      INSERT INTO ticket_items (
+        ticketId, species_id, quantity, width, thickness, length, 
+        price_per_mbf, total_bf, tax_amount, total_tax, total_amount
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
       for (const item of items) {
         // Convert empty species_id to null for database foreign key constraint
-        const speciesId = item.species_id === '' ? null : item.species_id;
-        
+        const speciesId = item.species_id === "" ? null : item.species_id;
+
         itemStmt.run(
           ticket.id,
           speciesId, // Use null instead of empty string
@@ -189,23 +203,28 @@ const TicketModel = {
     const updateTicket = db.transaction((id, ticket, items) => {
       // Update the ticket
       const ticketStmt = db.prepare(`
-        UPDATE tickets
-        SET party_id = ?,
-            billing_address_id = ?,
-            shipping_address_id = ?,
-            ship_via_id = ?,
-            sales_tax_id = ?,
-            customerName = ?,
-            customerPhone = ?,
-            date = ?,
-            status = ?,
-            total_bf = ?,
-            total_tax = ?,
-            total_amount = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `);
-      
+      UPDATE tickets
+      SET party_id = ?,
+          billing_address_id = ?,
+          shipping_address_id = ?,
+          ship_via_id = ?,
+          sales_tax_id = ?,
+          customerName = ?,
+          customerPhone = ?,
+          date = ?,
+          due_date = ?,
+          ticket_type = ?,
+          purchase_order = ?,
+          shipping_attention = ?,
+          total_freight = ?,
+          status = ?,
+          total_bf = ?,
+          total_tax = ?,
+          total_amount = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+
       ticketStmt.run(
         ticket.party_id,
         ticket.billing_address_id,
@@ -215,7 +234,12 @@ const TicketModel = {
         ticket.customerName,
         ticket.customerPhone,
         ticket.date,
-        ticket.status || 'draft',
+        ticket.due_date || null,
+        ticket.ticket_type || "invoice",
+        ticket.purchase_order || null,
+        ticket.shipping_attention || null,
+        ticket.total_freight || 0,
+        ticket.status || "draft",
         ticket.total_bf || 0,
         ticket.total_tax || 0,
         ticket.total_amount || 0,
@@ -224,23 +248,23 @@ const TicketModel = {
 
       // Delete all existing items for this ticket
       const deleteItemsStmt = db.prepare(`
-        DELETE FROM ticket_items WHERE ticketId = ?
-      `);
+      DELETE FROM ticket_items WHERE ticketId = ?
+    `);
       deleteItemsStmt.run(id);
 
       // Insert new items
       const itemStmt = db.prepare(`
-        INSERT INTO ticket_items (
-          ticketId, species_id, quantity, width, thickness, length, 
-          price_per_mbf, total_bf, tax_amount, total_tax, total_amount
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      INSERT INTO ticket_items (
+        ticketId, species_id, quantity, width, thickness, length, 
+        price_per_mbf, total_bf, tax_amount, total_tax, total_amount
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
       for (const item of items) {
         // Convert empty species_id to null for database foreign key constraint
-        const speciesId = item.species_id === '' ? null : item.species_id;
-        
+        const speciesId = item.species_id === "" ? null : item.species_id;
+
         itemStmt.run(
           id,
           speciesId, // Use null instead of empty string
@@ -275,7 +299,7 @@ const TicketModel = {
     `);
     const result = stmt.run(id);
     return result.changes > 0;
-  }
+  },
 };
 
 module.exports = TicketModel;
