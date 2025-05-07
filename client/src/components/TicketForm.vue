@@ -140,14 +140,12 @@
             <thead>
               <tr>
                 <th style="width: 40px"></th>
-                <th>Species</th>
-                <th>Quantity</th>
-                <th>Thickness (in)</th>
-                <th>Width (in)</th>
-                <th>Length (ft)</th>
-                <th>BF</th>
-                <th>Price/MBF</th>
-                <th>Total</th>
+                <th style="width: 20%">Species</th>
+                <th style="width: 8%">Qty</th>
+                <th style="width: 28%">Dimensions</th>
+                <th style="width: 12%">BF</th>
+                <th style="width: 15%">Price/MBF</th>
+                <th style="width: 15%">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -157,8 +155,8 @@
                     :disabled="ticket.items.length === 1">X</button>
                 </td>
                 <td>
-                  <select v-model="item.species_id" class="form-control" @change="calculateItemTotal(index)"
-                    ref="firstField">
+                  <select v-model="item.species_id" class="form-control form-control-sm"
+                    @change="calculateItemTotal(index)" ref="firstField">
                     <option value="">Select Species</option>
                     <option v-for="species in speciesList" :key="species.id" :value="species.id">
                       {{ species.list_name }}
@@ -166,28 +164,32 @@
                   </select>
                 </td>
                 <td>
-                  <input type="number" v-model.number="item.quantity" class="form-control"
-                    @change="calculateItemTotal(index)" />
+                  <input type="number" v-model.number="item.quantity" class="form-control form-control-sm text-center"
+                    @change="calculateItemTotal(index)" min="0" />
                 </td>
                 <td>
-                  <input type="number" v-model.number="item.thickness" class="form-control"
-                    @change="calculateItemTotal(index)" />
+                  <div class="input-group input-group-sm">
+                    <input type="number" v-model.number="item.thickness"
+                      class="form-control text-right lumber-dimension" @change="calculateItemTotal(index)" min="0"
+                      step="0.01" />
+                    <div class="input-group-text">×</div>
+                    <input type="number" v-model.number="item.width" class="form-control text-right lumber-dimension"
+                      @change="calculateItemTotal(index)" min="0" step="0.01" />
+                    <div class="input-group-text">×</div>
+                    <input type="number" v-model.number="item.length" class="form-control text-right lumber-dimension"
+                      @change="calculateItemTotal(index)" min="0" step="0.01" />
+                  </div>
                 </td>
+                <td class="text-right">{{ formatNumber(item.total_bf) }}</td>
                 <td>
-                  <input type="number" v-model.number="item.width" class="form-control"
-                    @change="calculateItemTotal(index)" />
+                  <div class="input-group input-group-sm">
+                    <div class="input-group-text">$</div>
+                    <input type="number" v-model.number="item.price_per_mbf" class="form-control text-right"
+                      @change="calculateItemTotal(index)" @keydown.tab="handleLastFieldTab(index, $event)"
+                      ref="lastField" min="0" step="0.01" />
+                  </div>
                 </td>
-                <td>
-                  <input type="number" v-model.number="item.length" class="form-control"
-                    @change="calculateItemTotal(index)" />
-                </td>
-                <td>{{ formatNumber(item.total_bf) }}</td>
-                <td>
-                  <input type="number" v-model.number="item.price_per_mbf" class="form-control"
-                    @change="calculateItemTotal(index)" @keydown.tab="handleLastFieldTab(index, $event)"
-                    ref="lastField" />
-                </td>
-                <td>${{ formatCurrency(item.total_amount) }}</td>
+                <td class="text-right">${{ formatCurrency(item.total_amount) }}</td>
               </tr>
             </tbody>
           </table>
@@ -942,5 +944,46 @@ export default {
   font-weight: bold;
   margin-top: 5px;
   font-size: 0.9rem;
+}
+
+.lumber-dimension {
+  min-width: 60px;
+  padding-right: 5px;
+}
+
+.input-group-text {
+  padding: 0.25rem 0.5rem;
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Modify the table to be more compact */
+.lumber-items .table td {
+  padding: 0.4rem;
+  vertical-align: middle;
+}
+
+.lumber-items .table th {
+  padding: 0.5rem 0.4rem;
+}
+
+/* Make the form controls in the table more compact */
+.lumber-items .form-control-sm {
+  height: calc(1.5em + 0.5rem + 2px);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Adjust the padding for number inputs */
+.lumber-items input[type="number"] {
+  padding-right: 0.3rem;
 }
 </style>
