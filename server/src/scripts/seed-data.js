@@ -57,6 +57,13 @@ const seedSalesTax = () => {
 
   const salesTaxes = [
     {
+      name: "None", // Adding "None" option
+      county: "None",
+      state: "All",
+      tax_rate: 0.0,
+      effective_date: "2020-01-01",
+    },
+    {
       name: "Gilmer County, GA",
       county: "Gilmer",
       state: "GA",

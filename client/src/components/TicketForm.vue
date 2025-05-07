@@ -11,8 +11,10 @@
     </div>
 
     <template v-else>
+
+      <!-- SECTION: TICKET INFORMATION -->
       <div class="form-section">
-        <h3>New Ticket Information</h3>
+        <h3>Ticket Information</h3>
         <div class="customer-info">
           <div class="form-group">
             <label>Customer</label>
@@ -74,8 +76,9 @@
         </div>
       </div>
 
+      <!-- SECTION: BILLING & SHIPPING-->
       <div class="form-section">
-        <h3>Addresses & Shipping</h3>
+        <h3>Billing & Shipping</h3>
         <div class="addresses">
           <div class="form-group">
             <label>Bill to</label>
@@ -130,6 +133,7 @@
         </div>
       </div>
 
+      <!-- SECTION: LUMBER ITEMS-->
       <div class="form-section">
         <div class="section-header">
           <h3>Lumber Items</h3>
@@ -196,6 +200,7 @@
         </div>
       </div>
 
+      <!-- SECTION: TOTALS -->
       <div class="form-section">
         <div class="totals">
           <div class="totals-flex">
@@ -215,6 +220,18 @@
                 <span class="label">Freight:</span>
                 <span class="value">$<input type="number" v-model.number="ticket.total_freight" class="freight-input"
                     @change="calculateTotals" /></span>
+              </div>
+              <!-- New Sales Tax dropdown -->
+              <div class="total-row">
+                <span class="label">Sales Tax:</span>
+                <span class="value">
+                  <select v-model="ticket.sales_tax_id" class="form-control tax-select" @change="recalculateTax">
+                    <option v-for="tax in salesTaxRates" :key="tax.id" :value="tax.id">
+                      {{ tax.name }} ({{ formatPercent(tax.tax_rate) }})
+                    </option>
+                  </select>
+                  <div v-if="customerIsTaxExempt" class="tax-exempt-notice">Customer is tax exempt.</div>
+                </span>
               </div>
               <div class="total-row">
                 <span class="label">Tax:</span>
@@ -732,12 +749,23 @@ export default {
         console.error('Error loading shipping methods:', error);
       }
     },
+
+    // METHOD: Update sales tax based on shipping method and address
     updateSalesTax() {
       // Determine which sales tax to use based on shipping method and address
       if (!this.ticket.ship_via_id || !this.shipViaMethods.length) return;
 
       const selectedShipVia = this.shipViaMethods.find(method => method.id === this.ticket.ship_via_id);
       if (!selectedShipVia) return;
+
+      // If customer is tax exempt, select the "None" tax rate
+      if (this.customerIsTaxExempt) {
+        const noneTax = this.salesTaxRates.find(tax => tax.name === 'None');
+        if (noneTax) {
+          this.ticket.sales_tax_id = noneTax.id;
+        }
+        return;
+      }
 
       // If "Pickup" is selected, use the sawmill's location tax (Gilmer County)
       if (selectedShipVia.name === 'Pickup') {
@@ -762,13 +790,33 @@ export default {
       // Recalculate tax for all items
       this.recalculateTax();
     },
+
+    // METHOD: Recalculate tax for all items
     recalculateTax() {
-      // Update tax calculations for all items
-      this.ticket.items.forEach((item, index) => {
-        this.calculateItemTotal(index);
+      // Update tax calculations for all items based on the selected tax rate
+      this.ticket.items.forEach(item => {
+        // Board Feet calculation: (Width × Thickness × Length) / 12
+        const boardFeet = (item.width * item.thickness * item.length) / 12 * item.quantity;
+        item.total_bf = boardFeet;
+
+        // Calculate amount: BF × (Price per MBF / 1000)
+        const amount = boardFeet * (item.price_per_mbf / 1000);
+
+        // Get the selected tax rate
+        const taxRate = this.customerIsTaxExempt ? 0 : (this.selectedSalesTax ? this.selectedSalesTax.tax_rate : 0);
+
+        // Calculate tax amount
+        item.tax_amount = amount * taxRate;
+
+        // Set total amount (including tax)
+        item.total_amount = amount + item.tax_amount;
       });
+
+      // Recalculate totals
+      this.calculateTotals();
     }
   },
+  
   created() {
     // Load sales tax rates and shipping methods first
     Promise.all([
@@ -915,6 +963,22 @@ export default {
   border-radius: 0.25rem;
   padding: 2px 5px;
   text-align: right;
+}
+
+/* SECTION: TOTALS-SALES TAX */
+.tax-select {
+  width: 200px;
+  display: inline-block;
+  padding: 2px 5px;
+  height: auto;
+  font-size: 0.9rem;
+}
+
+.tax-exempt-notice {
+  color: #1e7e34;
+  font-weight: bold;
+  margin-top: 3px;
+  font-size: 0.8rem;
 }
 
 .actions {
