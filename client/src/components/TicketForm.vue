@@ -113,7 +113,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Attention</label>
+            <label>Attention to</label>
             <input v-model="ticket.shipping_attention" class="form-control" />
           </div>
           <div class="form-group hidden">
