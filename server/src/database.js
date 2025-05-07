@@ -1,15 +1,15 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const Database = require("better-sqlite3");
+const path = require("path");
+const fs = require("fs");
 
 // Ensure the data directory exists
-const dataDir = path.join(__dirname, '..', 'data');
+const dataDir = path.join(__dirname, "..", "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
 // Initialize database
-const dbPath = path.join(dataDir, 'lumber-sales.db');
+const dbPath = path.join(dataDir, "lumber-sales.db");
 const db = new Database(dbPath, { verbose: console.log });
 
 // Create tables if they don't exist
@@ -54,8 +54,8 @@ const initDb = () => {
     )
   `);
 
-   // Create customers table (updated to remove tax_id and add sales_tax_exempt and default_ship_via_id)
-   db.exec(`
+  // Create customers table (updated to remove tax_id and add sales_tax_exempt and default_ship_via_id)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       party_id INTEGER NOT NULL,
@@ -83,8 +83,8 @@ const initDb = () => {
     )
   `);
 
- // Create sales_tax table
- db.exec(`
+  // Create sales_tax table
+  db.exec(`
   CREATE TABLE IF NOT EXISTS sales_tax (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -97,8 +97,8 @@ const initDb = () => {
   )
 `);
 
- // Create ship_via table
- db.exec(`
+  // Create ship_via table
+  db.exec(`
   CREATE TABLE IF NOT EXISTS ship_via (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -108,8 +108,8 @@ const initDb = () => {
   )
 `);
 
-   // Create addresses table (updated to include county and sales_tax_id)
-   db.exec(`
+  // Create addresses table (updated to include county and sales_tax_id)
+  db.exec(`
     CREATE TABLE IF NOT EXISTS addresses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       address_line1 TEXT NOT NULL,
@@ -158,12 +158,12 @@ const initDb = () => {
   // Drop the existing tickets table if it exists
   // WARNING: This will delete all existing tickets!
   db.exec(`DROP TABLE IF EXISTS tickets`);
-  
+
   // Drop the existing ticket_items table if it exists
   db.exec(`DROP TABLE IF EXISTS ticket_items`);
 
- // Create tickets table with new fields including ship_via_id and sales_tax_id
-db.exec(`
+  // Create tickets table with new fields including ship_via_id and sales_tax_id
+  db.exec(`
   CREATE TABLE IF NOT EXISTS tickets (
     id TEXT PRIMARY KEY,
     invoice_number INTEGER UNIQUE,
@@ -189,33 +189,40 @@ db.exec(`
   )
  `);
 
- // Create the sequence for invoice_number starting at 29999 (so first one will be 30000)
- try {
-  // Check if sequence already exists
-  const checkSeq = db.prepare(`
+  // Create the sequence for invoice_number starting at 29999 (so first one will be 30000)
+  try {
+    // Check if sequence already exists
+    const checkSeq = db
+      .prepare(
+        `
     SELECT seq FROM sqlite_sequence WHERE name = 'tickets'
-  `).get();
-  
-  if (!checkSeq) {
-    // Initialize the sequence
-    db.prepare(`
-      INSERT INTO sqlite_sequence (name, seq) VALUES ('tickets', 29999)
-    `).run();
-    console.log('Initialized invoice number sequence to start at 30000');
-  }
-} catch (error) {
-  console.log('Error setting invoice number sequence:', error.message);
-}
+  `
+      )
+      .get();
 
- // Create ticket_items table with new fields including tax_amount
- db.exec(`
+    if (!checkSeq) {
+      // Initialize the sequence
+      db.prepare(
+        `
+      INSERT INTO sqlite_sequence (name, seq) VALUES ('tickets', 29999)
+    `
+      ).run();
+      console.log("Initialized invoice number sequence to start at 30000");
+    }
+  } catch (error) {
+    console.log("Error setting invoice number sequence:", error.message);
+  }
+
+  // Create ticket_items table with new fields including tax_amount
+  // TODO: tax_amount needs deleted & be sure total_tax is used instead
+  db.exec(`
   CREATE TABLE IF NOT EXISTS ticket_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ticketId TEXT NOT NULL,
     species_id INTEGER, -- Changed to be nullable (no NOT NULL constraint)
     quantity INTEGER NOT NULL,
-    width REAL NOT NULL,
     thickness REAL NOT NULL,
+    width REAL NOT NULL,
     length REAL NOT NULL,
     price_per_mbf REAL NOT NULL,
     total_bf REAL DEFAULT 0,
@@ -240,10 +247,17 @@ db.exec(`
 
   // Add similar triggers for all other tables
   const tables = [
-    'party_types', 'party_type_mappings', 'customers', 'vendors', 
-    'addresses', 'party_addresses', 'species', 'tickets', 'ticket_items'
+    "party_types",
+    "party_type_mappings",
+    "customers",
+    "vendors",
+    "addresses",
+    "party_addresses",
+    "species",
+    "tickets",
+    "ticket_items",
   ];
-  
+
   for (const table of tables) {
     db.exec(`
       CREATE TRIGGER IF NOT EXISTS update_${table}_timestamp
@@ -254,7 +268,7 @@ db.exec(`
     `);
   }
 
-  console.log('Database initialized successfully');
+  console.log("Database initialized successfully");
 };
 
 // Initialize the database
