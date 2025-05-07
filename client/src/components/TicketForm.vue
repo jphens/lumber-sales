@@ -1,15 +1,15 @@
 <template>
   <div class="ticket-form">
     <h2>{{ isEditMode ? 'Edit' : 'New' }} Lumber Sales Ticket</h2>
-    
+
     <div v-if="loading" class="loading">
       Loading ticket data...
     </div>
-    
+
     <div v-else-if="error" class="error">
       Error: {{ error }}
     </div>
-    
+
     <template v-else>
       <div class="form-section">
         <h3>Customer Information</h3>
@@ -23,19 +23,13 @@
           <div class="form-group">
             <label>Customer</label>
             <div class="autocomplete">
-              <input 
-                v-model="customerSearch" 
-                class="form-control"
-                placeholder="Enter customer name or ID"
-                @input="searchCustomers" 
-              />
-              <div class="search-results" v-if="customerResults.length > 0">
-                <div
-                  v-for="result in customerResults"
-                  :key="result.id"
-                  class="search-item"
-                  @click="selectCustomer(result)"
-                >
+              <input v-model="customerSearch" class="form-control" placeholder="Enter customer name or ID"
+                @input="searchCustomers" @keydown="handleCustomerKeydown" @focus="showAllCustomers" @blur="handleBlur"
+                ref="customerSearchInput" />
+              <div class="search-results" v-if="customerResults.length > 0 && showResults">
+                <div v-for="(result, index) in customerResults" :key="result.id" class="search-item"
+                  :class="{ 'active': index === selectedResultIndex }" @click="selectCustomer(result)"
+                  @mouseover="selectedResultIndex = index">
                   {{ result.list_name }}
                 </div>
               </div>
@@ -71,9 +65,7 @@
           <div class="form-group">
             <label>Bill to</label>
             <select v-model="ticket.billing_address_id" class="form-control">
-              <option v-for="address in billingAddresses" 
-                      :key="address.id" 
-                      :value="address.id">
+              <option v-for="address in billingAddresses" :key="address.id" :value="address.id">
                 {{ formatAddress(address) }}
               </option>
             </select>
@@ -81,9 +73,7 @@
           <div class="form-group">
             <label>Ship to</label>
             <select v-model="ticket.shipping_address_id" class="form-control" @change="updateSalesTax">
-              <option v-for="address in shippingAddresses" 
-                      :key="address.id" 
-                      :value="address.id">
+              <option v-for="address in shippingAddresses" :key="address.id" :value="address.id">
                 {{ formatAddress(address) }}
               </option>
             </select>
@@ -91,9 +81,7 @@
           <div class="form-group">
             <label>Ship Via</label>
             <select v-model="ticket.ship_via_id" class="form-control" @change="updateSalesTax">
-              <option v-for="method in shipViaMethods" 
-                      :key="method.id" 
-                      :value="method.id">
+              <option v-for="method in shipViaMethods" :key="method.id" :value="method.id">
                 {{ method.name }}
               </option>
             </select>
@@ -101,9 +89,7 @@
           <div class="form-group">
             <label>Sales Tax</label>
             <select v-model="ticket.sales_tax_id" class="form-control" @change="recalculateTax">
-              <option v-for="tax in salesTaxRates" 
-                      :key="tax.id" 
-                      :value="tax.id">
+              <option v-for="tax in salesTaxRates" :key="tax.id" :value="tax.id">
                 {{ tax.name }} ({{ formatPercent(tax.tax_rate) }})
               </option>
             </select>
@@ -113,7 +99,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="form-section">
         <h3>Lumber Items</h3>
         <div class="lumber-items">
@@ -128,19 +114,15 @@
                 <th>BF</th>
                 <th>Price/MBF</th>
                 <th>Tax</th>
-                <th>Amount</th>
+                <th>Total</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(item, index) in ticket.items" :key="index">
                 <td>
-                  <select 
-                    v-model="item.species_id" 
-                    class="form-control" 
-                    @change="calculateItemTotal(index)"
-                    ref="firstField"
-                  >
+                  <select v-model="item.species_id" class="form-control" @change="calculateItemTotal(index)"
+                    ref="firstField">
                     <option value="">Select Species</option>
                     <option v-for="species in speciesList" :key="species.id" :value="species.id">
                       {{ species.list_name }}
@@ -148,52 +130,32 @@
                   </select>
                 </td>
                 <td>
-                  <input 
-                    type="number" 
-                    v-model.number="item.quantity" 
-                    class="form-control" 
-                    @change="calculateItemTotal(index)" 
-                  />
+                  <input type="number" v-model.number="item.quantity" class="form-control"
+                    @change="calculateItemTotal(index)" />
                 </td>
                 <td>
-                  <input 
-                    type="number" 
-                    v-model.number="item.thickness" 
-                    class="form-control" 
-                    @change="calculateItemTotal(index)" 
-                  />
+                  <input type="number" v-model.number="item.thickness" class="form-control"
+                    @change="calculateItemTotal(index)" />
                 </td>
                 <td>
-                  <input 
-                    type="number" 
-                    v-model.number="item.width" 
-                    class="form-control" 
-                    @change="calculateItemTotal(index)" 
-                  />
+                  <input type="number" v-model.number="item.width" class="form-control"
+                    @change="calculateItemTotal(index)" />
                 </td>
                 <td>
-                  <input 
-                    type="number" 
-                    v-model.number="item.length" 
-                    class="form-control" 
-                    @change="calculateItemTotal(index)" 
-                  />
+                  <input type="number" v-model.number="item.length" class="form-control"
+                    @change="calculateItemTotal(index)" />
                 </td>
                 <td>{{ formatNumber(item.total_bf) }}</td>
                 <td>
-                  <input 
-                    type="number"
-                    v-model.number="item.price_per_mbf" 
-                    class="form-control" 
-                    @change="calculateItemTotal(index)"
-                    @keydown.tab="handleLastFieldTab(index, $event)"
-                    ref="lastField"
-                  />
+                  <input type="number" v-model.number="item.price_per_mbf" class="form-control"
+                    @change="calculateItemTotal(index)" @keydown.tab="handleLastFieldTab(index, $event)"
+                    ref="lastField" />
                 </td>
                 <td>${{ formatCurrency(item.tax_amount) }}</td>
                 <td>${{ formatCurrency(item.total_amount) }}</td>
                 <td>
-                  <button @click="removeItem(index)" class="btn btn-danger btn-sm" :disabled="ticket.items.length === 1">Remove</button>
+                  <button @click="removeItem(index)" class="btn btn-danger btn-sm"
+                    :disabled="ticket.items.length === 1">Remove</button>
                 </td>
               </tr>
             </tbody>
@@ -201,13 +163,13 @@
           <button @click="addItem" class="btn btn-primary">Add Item</button>
         </div>
       </div>
-      
+
       <div class="totals">
         <div class="d-flex justify-content-end">
           <div class="totals-content">
             <div class="total-row">
               <span class="label">Subtotal:</span>
-              <span class="value">${{ formatCurrency(ticket.total_amount) }}</span>
+              <span class="value">${{ formatCurrency(calculateSubtotal()) }}</span>
             </div>
             <div class="total-row">
               <span class="label">Tax:</span>
@@ -215,7 +177,7 @@
             </div>
             <div class="total-row">
               <span class="label">Total:</span>
-              <span class="value">${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax)) }}</span>
+              <span class="value">${{ formatCurrency(ticket.total_amount) }}</span>
             </div>
             <div class="total-row">
               <span class="label">Total Board Feet:</span>
@@ -224,7 +186,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="actions">
         <button @click="saveTicket" class="btn btn-success" :disabled="saving">
           {{ saving ? 'Saving...' : 'Save Ticket' }}
@@ -237,14 +199,14 @@
 </template>
 
 <script>
-import { 
-  TicketService, 
-  SalesTaxService, 
-  ShipViaService, 
-  CustomerService, 
+import {
+  TicketService,
+  SalesTaxService,
+  ShipViaService,
+  CustomerService,
   AddressService,
   PartyService,
-  SpeciesService 
+  SpeciesService
 } from '../services/api';
 import { nextTick } from 'vue';
 
@@ -280,6 +242,9 @@ export default {
       error: null,
       customerSearch: '',
       customerResults: [],
+      allCustomers: [],
+      selectedResultIndex: -1,
+      showResults: false,
       customerAddresses: [],
       customerData: null,
       customerIsTaxExempt: false,
@@ -296,6 +261,7 @@ export default {
         price_per_mbf: 1000.00,
         total_bf: 0,
         tax_amount: 0,
+        total_tax: 0,
         total_amount: 0
       }
     };
@@ -303,24 +269,24 @@ export default {
   computed: {
     // Computed property to filter billing addresses
     billingAddresses() {
-      return this.customerAddresses.filter(address => 
+      return this.customerAddresses.filter(address =>
         address.address_type === 'billing' || address.address_type === 'both'
       );
     },
-    
+
     // Computed property to filter shipping addresses
     shippingAddresses() {
-      return this.customerAddresses.filter(address => 
+      return this.customerAddresses.filter(address =>
         address.address_type === 'shipping' || address.address_type === 'both'
       );
     },
-    
+
     // Get the selected sales tax
     selectedSalesTax() {
       if (!this.ticket.sales_tax_id) return null;
       return this.salesTaxRates.find(tax => tax.id === this.ticket.sales_tax_id);
     },
-    
+
     // API base URL
     $apiBaseUrl() {
       return process.env.VUE_APP_API_URL || 'http://localhost:3000/api';
@@ -352,7 +318,7 @@ export default {
       const newItem = { ...this.defaultItemValues };
       this.ticket.items.push(newItem);
       this.calculateItemTotal(this.ticket.items.length - 1);
-      
+
       // Focus on the first field of the new row after Vue updates the DOM
       nextTick(() => {
         const firstFields = this.$refs.firstField;
@@ -365,27 +331,27 @@ export default {
     removeItem(index) {
       // Don't allow removing the last item
       if (this.ticket.items.length <= 1) return;
-      
+
       this.ticket.items.splice(index, 1);
       this.calculateTotals();
     },
     calculateItemTotal(index) {
       const item = this.ticket.items[index];
-      
+
       // Board Feet calculation: (Width × Thickness × Length) / 12
       const boardFeet = (item.width * item.thickness * item.length) / 12 * item.quantity;
       item.total_bf = boardFeet;
-      
+
       // Calculate amount: BF × (Price per MBF / 1000)
       const amount = boardFeet * (item.price_per_mbf / 1000);
-      
+
       // Calculate tax based on the selected tax rate
       const taxRate = this.customerIsTaxExempt ? 0 : (this.selectedSalesTax ? this.selectedSalesTax.tax_rate : 0);
       item.tax_amount = amount * taxRate;
-      
-      // Set total amount (now only the base amount, excluding tax)
-      item.total_amount = amount;
-      
+
+      // Set total amount
+      item.total_amount = amount + item.tax_amount;
+
       this.calculateTotals();
     },
     // New method to handle tab key on the last field of a row
@@ -396,17 +362,17 @@ export default {
         if (index === this.ticket.items.length - 1) {
           // Check if the current row has data before adding a new row
           const currentItem = this.ticket.items[index];
-          const hasData = currentItem.quantity > 0 || 
-                          currentItem.width > 0 || 
-                          currentItem.thickness > 0 || 
-                          currentItem.length > 0 || 
-                          currentItem.price_per_mbf > 0 ||
-                          currentItem.species_id;
-                          
+          const hasData = currentItem.quantity > 0 ||
+            currentItem.width > 0 ||
+            currentItem.thickness > 0 ||
+            currentItem.length > 0 ||
+            currentItem.price_per_mbf > 0 ||
+            currentItem.species_id;
+
           if (hasData) {
             // Prevent default tab behavior
             event.preventDefault();
-            
+
             // Add a new row
             this.addItem();
           }
@@ -414,34 +380,31 @@ export default {
       }
     },
     calculateSubtotal() {
-      // Since total_amount now represents the base amount (not including tax),
-      // we can just return it directly
-      return this.ticket.total_amount;
+      return this.ticket.items.reduce((sum, item) => sum + (item.total_amount - item.tax_amount), 0);
     },
     calculateTotals() {
       // Calculate total board feet
       this.ticket.total_bf = this.ticket.items.reduce((sum, item) => sum + item.total_bf, 0);
-      
+
       // Calculate total tax
       this.ticket.total_tax = this.ticket.items.reduce((sum, item) => sum + item.tax_amount, 0);
-      
-      // Calculate total amount (base amount, not including tax)
-      const baseAmount = this.ticket.items.reduce((sum, item) => sum + item.total_amount, 0);
-      this.ticket.total_amount = baseAmount;
+
+      // Calculate total amount
+      this.ticket.total_amount = this.ticket.items.reduce((sum, item) => sum + item.total_amount, 0);
     },
     async saveTicket() {
       this.saving = true;
       try {
         // Remove any completely empty rows before saving
         this.ticket.items = this.ticket.items.filter(item => {
-          return item.quantity > 0 || 
-                 item.width > 0 || 
-                 item.thickness > 0 || 
-                 item.length > 0 || 
-                 item.price_per_mbf > 0 ||
-                 item.species_id;
+          return item.quantity > 0 ||
+            item.width > 0 ||
+            item.thickness > 0 ||
+            item.length > 0 ||
+            item.price_per_mbf > 0 ||
+            item.species_id;
         });
-        
+
         if (this.isEditMode) {
           // Update existing ticket
           const updatedTicket = await TicketService.updateTicket(this.id, this.ticket);
@@ -494,20 +457,21 @@ export default {
       this.addItem();
       this.customerSearch = '';
       this.customerResults = [];
+      this.selectedResultIndex = -1;
       this.customerAddresses = [];
       this.customerData = null;
       this.customerIsTaxExempt = false;
     },
     async loadTicket() {
       if (!this.id) return;
-      
+
       this.isEditMode = true;
       this.loading = true;
-      
+
       try {
         const ticket = await TicketService.getTicket(this.id);
         this.ticket = ticket;
-        
+
         // If the ticket has a party_id, load customer addresses and data
         if (ticket.party_id) {
           await this.loadCustomerData(ticket.party_id);
@@ -518,52 +482,158 @@ export default {
         this.loading = false;
       }
     },
-    async searchCustomers() {
-      if (this.customerSearch.length < 2) {
-        this.customerResults = [];
-        return;
-      }
-      
+
+    // New method to load all customers
+    async loadAllCustomers() {
       try {
-        this.customerResults = await PartyService.searchParties(this.customerSearch);
+        // Get all parties that are customers (type='customer')
+        this.allCustomers = await PartyService.getPartiesByType('customer');
+
+        // Sort alphabetically by name
+        this.allCustomers.sort((a, b) => {
+          return a.name.localeCompare(b.name);
+        });
       } catch (error) {
-        console.error('Error searching customers:', error);
+        console.error('Error loading all customers:', error);
       }
     },
+
+    // Show all customers when input is focused
+    showAllCustomers() {
+      this.showResults = true;
+
+      if (this.customerSearch.trim() === '') {
+        this.customerResults = [...this.allCustomers];
+        this.selectedResultIndex = -1;
+      } else {
+        this.searchCustomers();
+      }
+    },
+
+    // Handle blur event (when input loses focus)
+    handleBlur() {
+      // Delay hiding results to allow click events to register
+      setTimeout(() => {
+        this.showResults = false;
+      }, 200);
+    },
+
+    // Modified to implement fuzzy search
+    async searchCustomers() {
+      this.showResults = true;
+
+      if (this.customerSearch.trim() === '') {
+        // Show all customers if search is empty
+        this.customerResults = [...this.allCustomers];
+        this.selectedResultIndex = -1;
+        return;
+      }
+
+      // Local fuzzy search on allCustomers
+      const searchTerm = this.customerSearch.toLowerCase();
+      this.customerResults = this.allCustomers.filter(customer => {
+        return customer.list_name.toLowerCase().includes(searchTerm) ||
+          customer.name.toLowerCase().includes(searchTerm) ||
+          customer.party_number.toLowerCase().includes(searchTerm);
+      });
+
+      // Reset selected index when results change
+      this.selectedResultIndex = -1;
+    },
+
+    // Handle keyboard navigation for customer results
+    handleCustomerKeydown(event) {
+      if (!this.showResults || this.customerResults.length === 0) return;
+
+      // Down arrow key
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        this.selectedResultIndex = Math.min(this.selectedResultIndex + 1, this.customerResults.length - 1);
+        this.ensureSelectedResultVisible();
+      }
+      // Up arrow key
+      else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        this.selectedResultIndex = Math.max(this.selectedResultIndex - 1, 0);
+        this.ensureSelectedResultVisible();
+      }
+      // Enter key
+      else if (event.key === 'Enter' && this.selectedResultIndex >= 0) {
+        event.preventDefault();
+        this.selectCustomer(this.customerResults[this.selectedResultIndex]);
+      }
+      // Tab key
+      else if (event.key === 'Tab' && this.selectedResultIndex >= 0) {
+        event.preventDefault();
+        this.selectCustomer(this.customerResults[this.selectedResultIndex]);
+      }
+      // Escape key
+      else if (event.key === 'Escape') {
+        event.preventDefault();
+        this.showResults = false;
+      }
+    },
+
+    // Helper to ensure selected result is visible in dropdown
+    ensureSelectedResultVisible() {
+      nextTick(() => {
+        if (this.selectedResultIndex >= 0) {
+          const container = document.querySelector('.search-results');
+          const selectedItem = container.querySelector('.search-item.active');
+
+          if (container && selectedItem) {
+            // Check if the selected item is outside the visible area
+            const containerRect = container.getBoundingClientRect();
+            const selectedRect = selectedItem.getBoundingClientRect();
+
+            if (selectedRect.bottom > containerRect.bottom) {
+              // Scroll down if selected item is below the visible area
+              container.scrollTop += (selectedRect.bottom - containerRect.bottom);
+            } else if (selectedRect.top < containerRect.top) {
+              // Scroll up if selected item is above the visible area
+              container.scrollTop += (selectedRect.top - containerRect.top);
+            }
+          }
+        }
+      });
+    },
+
     async selectCustomer(customer) {
       this.customerSearch = customer.list_name;
-      this.customerResults = [];
+      this.showResults = false;
+      this.selectedResultIndex = -1;
       this.ticket.party_id = customer.id;
       this.ticket.customerName = customer.name;
       this.ticket.customerPhone = customer.phone || '';
-      
+
       // Load customer data, addresses, and default shipping method
       await this.loadCustomerData(customer.id);
     },
+
     async loadCustomerData(partyId) {
       try {
         // Get customer data including tax exempt status and default shipping method
         this.customerData = await CustomerService.getCustomerByPartyId(partyId);
-        
+
         // Set tax exempt status
         this.customerIsTaxExempt = this.customerData.sales_tax_exempt === 1;
-        
+
         // Set default shipping method if available
         if (this.customerData.default_ship_via_id) {
           this.ticket.ship_via_id = this.customerData.default_ship_via_id;
         }
-        
+
         // Get customer addresses
         this.customerAddresses = await AddressService.getAddressesForParty(partyId);
-        
+
         // Set default billing and shipping addresses if available
         const defaultBilling = this.billingAddresses.find(a => a.is_default);
         const defaultShipping = this.shippingAddresses.find(a => a.is_default);
-        
+
         if (defaultBilling) {
           this.ticket.billing_address_id = defaultBilling.id;
         }
-        
+
         if (defaultShipping) {
           this.ticket.shipping_address_id = defaultShipping.id;
           this.updateSalesTax();
@@ -596,10 +666,10 @@ export default {
     updateSalesTax() {
       // Determine which sales tax to use based on shipping method and address
       if (!this.ticket.ship_via_id || !this.shipViaMethods.length) return;
-      
+
       const selectedShipVia = this.shipViaMethods.find(method => method.id === this.ticket.ship_via_id);
       if (!selectedShipVia) return;
-      
+
       // If "Pickup" is selected, use the sawmill's location tax (Gilmer County)
       if (selectedShipVia.name === 'Pickup') {
         // Find Gilmer County sales tax
@@ -610,16 +680,16 @@ export default {
       } else {
         // Otherwise, use the shipping address tax if available
         if (this.ticket.shipping_address_id) {
-          const shippingAddress = this.customerAddresses.find(address => 
+          const shippingAddress = this.customerAddresses.find(address =>
             address.id === this.ticket.shipping_address_id
           );
-          
+
           if (shippingAddress && shippingAddress.sales_tax_id) {
             this.ticket.sales_tax_id = shippingAddress.sales_tax_id;
           }
         }
       }
-      
+
       // Recalculate tax for all items
       this.recalculateTax();
     },
@@ -634,11 +704,12 @@ export default {
     // Load sales tax rates and shipping methods first
     Promise.all([
       this.loadSalesTaxRates(),
-      this.loadShipViaMethods()
+      this.loadShipViaMethods(),
+      this.loadAllCustomers() // Load all customers at init
     ]).then(() => {
       // Load species list
       this.loadSpecies();
-      
+
       // Start with one empty item if not in edit mode
       if (!this.id) {
         this.addItem();
@@ -689,6 +760,7 @@ export default {
   border: 1px solid #ced4da;
   border-radius: 0.25rem;
   z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .search-item {
@@ -696,8 +768,14 @@ export default {
   cursor: pointer;
 }
 
-.search-item:hover {
-  background-color: #f8f9fa;
+.search-item:hover,
+.search-item.active {
+  background-color: #f0f7ff;
+}
+
+.search-item.active {
+  background-color: #e7f1ff;
+  border-left: 3px solid #0d6efd;
 }
 
 .totals {
@@ -727,7 +805,8 @@ export default {
   margin-right: 10px;
 }
 
-.loading, .error {
+.loading,
+.error {
   text-align: center;
   margin: 20px 0;
   padding: 10px;
@@ -748,7 +827,9 @@ export default {
 }
 
 @media print {
-  .actions, button {
+
+  .actions,
+  button {
     display: none;
   }
 }
