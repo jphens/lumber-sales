@@ -12,14 +12,8 @@
 
     <template v-else>
       <div class="form-section">
-        <h3>Customer Information</h3>
+        <h3>New Ticket Information</h3>
         <div class="customer-info">
-          <div class="form-group">
-            <label>Invoice #</label>
-            <!-- Only show invoice number when editing an existing ticket -->
-            <input v-if="isEditMode" v-model="ticket.invoice_number" class="form-control" disabled />
-            <input v-else value="(Auto-assigned)" class="form-control" disabled />
-          </div>
           <div class="form-group">
             <label>Customer</label>
             <div class="autocomplete">
@@ -36,16 +30,33 @@
             </div>
           </div>
           <div class="form-group">
+            <label>Date</label>
+            <input type="date" v-model="ticket.date" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" v-model="dueDate" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Invoice #</label>
+            <!-- Only show invoice number when editing an existing ticket -->
+            <input v-if="isEditMode" v-model="ticket.invoice_number" class="form-control" disabled />
+            <input v-else value="(Auto-assigned)" class="form-control" disabled />
+          </div>
+        </div>
+        <div class="customer-info">
+          <div class="form-group">
             <label>Customer Name</label>
             <input v-model="ticket.customerName" class="form-control" />
           </div>
           <div class="form-group">
-            <label>Customer Phone</label>
-            <input v-model="ticket.customerPhone" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" v-model="ticket.date" class="form-control" />
+            <label>Type</label>
+            <select v-model="ticketType" class="form-control">
+              <option value="invoice">Invoice</option>
+              <option value="quote">Quote</option>
+              <option value="po">Purchase Order</option>
+              <option value="bol">Bill of Lading</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Status</label>
@@ -55,6 +66,10 @@
               <option value="paid">Purchase Order</option>
               <option value="void">Bill of Lading</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Customer PO#</label>
+            <input v-model="customerPO" class="form-control" />
           </div>
         </div>
       </div>
@@ -66,7 +81,7 @@
             <label>Bill to</label>
             <select v-model="ticket.billing_address_id" class="form-control">
               <option v-for="address in billingAddresses" :key="address.id" :value="address.id">
-                {{ formatAddress(address) }}
+                {{ formatAddressSimple(address) }}
               </option>
             </select>
           </div>
@@ -74,9 +89,19 @@
             <label>Ship to</label>
             <select v-model="ticket.shipping_address_id" class="form-control" @change="updateSalesTax">
               <option v-for="address in shippingAddresses" :key="address.id" :value="address.id">
-                {{ formatAddress(address) }}
+                {{ formatAddressSimple(address) }}
               </option>
             </select>
+          </div>
+        </div>
+        <div class="shipping-details">
+          <div class="form-group">
+            <label>Customer Email</label>
+            <input v-model="customerEmail" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Customer Phone</label>
+            <input v-model="ticket.customerPhone" class="form-control" />
           </div>
           <div class="form-group">
             <label>Ship Via</label>
@@ -87,6 +112,10 @@
             </select>
           </div>
           <div class="form-group">
+            <label>Attention</label>
+            <input v-model="attention" class="form-control" />
+          </div>
+          <div class="form-group hidden">
             <label>Sales Tax</label>
             <select v-model="ticket.sales_tax_id" class="form-control" @change="recalculateTax">
               <option v-for="tax in salesTaxRates" :key="tax.id" :value="tax.id">
@@ -101,11 +130,15 @@
       </div>
 
       <div class="form-section">
-        <h3>Lumber Items</h3>
+        <div class="section-header">
+          <h3>Lumber Items</h3>
+          <button @click="addItem" class="btn btn-primary">Add Item</button>
+        </div>
         <div class="lumber-items">
           <table class="table">
             <thead>
               <tr>
+                <th style="width: 40px"></th>
                 <th>Species</th>
                 <th>Quantity</th>
                 <th>Thickness (in)</th>
@@ -113,13 +146,15 @@
                 <th>Length (ft)</th>
                 <th>BF</th>
                 <th>Price/MBF</th>
-                <th>Tax</th>
                 <th>Total</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(item, index) in ticket.items" :key="index">
+                <td>
+                  <button @click="removeItem(index)" class="btn btn-danger btn-sm btn-icon"
+                    :disabled="ticket.items.length === 1">X</button>
+                </td>
                 <td>
                   <select v-model="item.species_id" class="form-control" @change="calculateItemTotal(index)"
                     ref="firstField">
@@ -151,37 +186,41 @@
                     @change="calculateItemTotal(index)" @keydown.tab="handleLastFieldTab(index, $event)"
                     ref="lastField" />
                 </td>
-                <td>${{ formatCurrency(item.tax_amount) }}</td>
                 <td>${{ formatCurrency(item.total_amount) }}</td>
-                <td>
-                  <button @click="removeItem(index)" class="btn btn-danger btn-sm"
-                    :disabled="ticket.items.length === 1">Remove</button>
-                </td>
               </tr>
             </tbody>
           </table>
-          <button @click="addItem" class="btn btn-primary">Add Item</button>
         </div>
       </div>
 
-      <div class="totals">
-        <div class="d-flex justify-content-end">
-          <div class="totals-content">
-            <div class="total-row">
-              <span class="label">Subtotal:</span>
-              <span class="value">${{ formatCurrency(calculateSubtotal()) }}</span>
-            </div>
-            <div class="total-row">
-              <span class="label">Tax:</span>
-              <span class="value">${{ formatCurrency(ticket.total_tax) }}</span>
-            </div>
-            <div class="total-row">
-              <span class="label">Total:</span>
-              <span class="value">${{ formatCurrency(ticket.total_amount) }}</span>
-            </div>
-            <div class="total-row">
+      <div class="form-section">
+        <div class="totals">
+          <div class="totals-flex">
+            <div class="total-item bf-total">
               <span class="label">Total Board Feet:</span>
               <span class="value">{{ formatNumber(ticket.total_bf) }}</span>
+            </div>
+
+            <div class="flex-spacer"></div>
+
+            <div class="totals-block">
+              <div class="total-row">
+                <span class="label">Subtotal:</span>
+                <span class="value">${{ formatCurrency(calculateSubtotal()) }}</span>
+              </div>
+              <div class="total-row">
+                <span class="label">Freight:</span>
+                <span class="value">$<input type="number" v-model.number="freight" class="freight-input"
+                    @change="calculateTotals" /></span>
+              </div>
+              <div class="total-row">
+                <span class="label">Tax:</span>
+                <span class="value">${{ formatCurrency(ticket.total_tax) }}</span>
+              </div>
+              <div class="total-row">
+                <span class="label">Total:</span>
+                <span class="value">${{ formatCurrency(calculateGrandTotal()) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -236,6 +275,14 @@ export default {
         total_amount: 0,
         items: []
       },
+      // New fields not connected to data model yet
+      dueDate: this.calculateDueDate(),
+      ticketType: 'invoice',
+      customerPO: '',
+      customerEmail: '',
+      attention: '',
+      freight: 0,
+
       isEditMode: false,
       loading: false,
       saving: false,
@@ -254,11 +301,11 @@ export default {
       currentTaxRate: 0,
       defaultItemValues: {
         species_id: '',
-        quantity: 1,
-        width: 2,
-        thickness: 4,
-        length: 8,
-        price_per_mbf: 1000.00,
+        quantity: null,
+        width: null,
+        thickness: null,
+        length: null,
+        price_per_mbf: null,
         total_bf: 0,
         tax_amount: 0,
         total_tax: 0,
@@ -293,6 +340,11 @@ export default {
     }
   },
   methods: {
+    calculateDueDate() {
+      const date = new Date();
+      date.setDate(date.getDate() + 30);
+      return date.toISOString().split('T')[0];
+    },
     generateId() {
       return 'T' + Date.now().toString();
     },
@@ -305,11 +357,12 @@ export default {
     formatPercent(value) {
       return (Number(value || 0) * 100).toFixed(2) + '%';
     },
-    formatAddress(address) {
-      let formattedAddress = `${address.address_line1}, ${address.city}, ${address.state} ${address.postal_code}`;
-      if (address.tax_name) {
-        formattedAddress += ` (${address.tax_name})`;
+    formatAddressSimple(address) {
+      let formattedAddress = `${address.address_line1}`;
+      if (address.address_line2) {
+        formattedAddress += `, ${address.address_line2}`;
       }
+      formattedAddress += `, ${address.city}, ${address.state} ${address.postal_code}`;
       return formattedAddress;
     },
     // Modified to use default values from data property
@@ -382,6 +435,9 @@ export default {
     calculateSubtotal() {
       return this.ticket.items.reduce((sum, item) => sum + (item.total_amount - item.tax_amount), 0);
     },
+    calculateGrandTotal() {
+      return this.ticket.total_amount + (this.freight || 0);
+    },
     calculateTotals() {
       // Calculate total board feet
       this.ticket.total_bf = this.ticket.items.reduce((sum, item) => sum + item.total_bf, 0);
@@ -389,7 +445,7 @@ export default {
       // Calculate total tax
       this.ticket.total_tax = this.ticket.items.reduce((sum, item) => sum + item.tax_amount, 0);
 
-      // Calculate total amount
+      // Calculate total amount (excluding freight in the saved model)
       this.ticket.total_amount = this.ticket.items.reduce((sum, item) => sum + item.total_amount, 0);
     },
     async saveTicket() {
@@ -454,6 +510,15 @@ export default {
         total_amount: 0,
         items: []
       };
+
+      // Reset the new fields
+      this.dueDate = this.calculateDueDate();
+      this.ticketType = 'invoice';
+      this.customerPO = '';
+      this.customerEmail = '';
+      this.attention = '';
+      this.freight = 0;
+
       this.addItem();
       this.customerSearch = '';
       this.customerResults = [];
@@ -471,6 +536,11 @@ export default {
       try {
         const ticket = await TicketService.getTicket(this.id);
         this.ticket = ticket;
+
+        // Set due date to 30 days after ticket date
+        const ticketDate = new Date(ticket.date);
+        ticketDate.setDate(ticketDate.getDate() + 30);
+        this.dueDate = ticketDate.toISOString().split('T')[0];
 
         // If the ticket has a party_id, load customer addresses and data
         if (ticket.party_id) {
@@ -605,6 +675,7 @@ export default {
       this.ticket.party_id = customer.id;
       this.ticket.customerName = customer.name;
       this.ticket.customerPhone = customer.phone || '';
+      this.customerEmail = customer.email || '';
 
       // Load customer data, addresses, and default shipping method
       await this.loadCustomerData(customer.id);
@@ -732,9 +803,16 @@ export default {
   margin-bottom: 30px;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
 .customer-info {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 15px;
   margin-bottom: 20px;
 }
@@ -743,6 +821,17 @@ export default {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 15px;
+  margin-bottom: 15px;
+}
+
+.shipping-details {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.hidden {
+  display: none;
 }
 
 .autocomplete {
@@ -778,12 +867,36 @@ export default {
   border-left: 3px solid #0d6efd;
 }
 
+.btn-icon {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
 .totals {
   margin-top: 20px;
   margin-bottom: 20px;
 }
 
-.totals-content {
+.totals-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.flex-spacer {
+  flex-grow: 1;
+}
+
+.bf-total {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.totals-block {
   min-width: 300px;
 }
 
@@ -795,6 +908,15 @@ export default {
 
 .total-row .label {
   font-weight: bold;
+  margin-right: 20px;
+}
+
+.freight-input {
+  width: 80px;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  padding: 2px 5px;
+  text-align: right;
 }
 
 .actions {
@@ -824,13 +946,5 @@ export default {
   font-weight: bold;
   margin-top: 5px;
   font-size: 0.9rem;
-}
-
-@media print {
-
-  .actions,
-  button {
-    display: none;
-  }
 }
 </style>
