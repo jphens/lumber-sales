@@ -628,9 +628,23 @@ export default {
         // Get all parties that are customers (type='customer')
         this.allCustomers = await PartyService.getPartiesByType('customer');
 
-        // Sort alphabetically by name
+        // Sort by customer number (smallest to greatest)
         this.allCustomers.sort((a, b) => {
-          return a.name.localeCompare(b.name);
+          // Convert party_number strings to numbers for correct numeric sorting
+          const numA = parseInt(a.party_number, 10);
+          const numB = parseInt(b.party_number, 10);
+
+          // Handle case where parsing fails (non-numeric party_numbers)
+          if (isNaN(numA) && isNaN(numB)) {
+            return a.party_number.localeCompare(b.party_number); // fallback to string comparison
+          } else if (isNaN(numA)) {
+            return 1; // push non-numeric values to the end
+          } else if (isNaN(numB)) {
+            return -1; // push non-numeric values to the end
+          }
+
+          // Standard numeric comparison
+          return numA - numB;
         });
       } catch (error) {
         console.error('Error loading all customers:', error);
@@ -888,6 +902,7 @@ export default {
     if (this.$refs.customerSearchInput) {
       this.$refs.customerSearchInput.focus();
     }
+    console.log("mounted-isInitialLoad:", this.isInitialLoad);
   }
 };
 </script>
