@@ -1,3 +1,5 @@
+// client/src/components/TicketForm.vue
+
 <template>
   <div class="ticket-form">
     <h2>{{ isEditMode ? 'Edit' : 'New' }} Lumber Sales Ticket</h2>
@@ -246,11 +248,14 @@
         </div>
       </div>
 
+      <!-- MODIFIED: Buttons section with new buttons -->
       <div class="actions">
-        <button @click="saveTicket" class="btn btn-success" :disabled="saving">
-          {{ saving ? 'Saving...' : 'Save Ticket' }}
+        <button @click="saveAndClose" class="btn btn-success" :disabled="saving">
+          {{ saving ? 'Saving...' : 'Save & Close' }}
         </button>
-        <button @click="printTicket" class="btn btn-info">Print Ticket</button>
+        <button @click="saveAndPrint" class="btn btn-primary" :disabled="saving">
+          {{ saving ? 'Saving...' : 'Save & Print' }}
+        </button>
         <button @click="cancel" class="btn btn-secondary">Cancel</button>
       </div>
     </template>
@@ -468,7 +473,8 @@ export default {
       // Calculate total amount (sum of all item totals without tax)
       this.ticket.total_amount = this.calculateSubtotal();
     },
-    async saveTicket() {
+    // MODIFIED: Save and close method - saves the ticket and returns to the list view
+    async saveAndClose() {
       this.saving = true;
       try {
         // Remove any completely empty rows before saving
@@ -495,6 +501,7 @@ export default {
           this.ticket.invoice_number = newTicket.invoice_number;
           this.resetForm();
         }
+        // Navigate to ticket list
         this.$router.push('/list');
       } catch (error) {
         alert(`Failed to save ticket: ${error.message}`);
@@ -502,11 +509,50 @@ export default {
         this.saving = false;
       }
     },
-    printTicket() {
-      if (this.isEditMode) {
-        this.$router.push(`/print/${this.id}`);
-      } else {
-        alert('Please save the ticket before printing.');
+    // ADDED: Save and print method - saves the ticket and goes to print view
+    async saveAndPrint() {
+      this.saving = true;
+      try {
+        // Remove any completely empty rows before saving
+        this.ticket.items = this.ticket.items.filter(item => {
+          return item.quantity > 0 ||
+            item.width > 0 ||
+            item.thickness > 0 ||
+            item.length > 0 ||
+            item.price_per_mbf > 0 ||
+            item.species_id;
+        });
+
+        let ticketId;
+
+        if (this.isEditMode) {
+          // Update existing ticket
+          const updatedTicket = await TicketService.updateTicket(this.id, this.ticket);
+          alert('Ticket updated!');
+          // Update the local ticket with any changes from the server
+          this.ticket = updatedTicket;
+          ticketId = this.id;
+        } else {
+          // Create new ticket
+          const newTicket = await TicketService.createTicket(this.ticket);
+          alert('Ticket saved!');
+          // The server assigns the invoice number, let's update the UI
+          this.ticket.invoice_number = newTicket.invoice_number;
+          ticketId = this.ticket.id;
+          this.resetForm();
+        }
+
+        // Navigate to print view
+        this.$router.push(`/print/${ticketId}`);
+
+        // Use setTimeout to allow the print view to load before opening the print dialog
+        setTimeout(() => {
+          window.print();
+        }, 1000);
+      } catch (error) {
+        alert(`Failed to save ticket: ${error.message}`);
+      } finally {
+        this.saving = false;
       }
     },
     cancel() {
