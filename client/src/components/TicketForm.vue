@@ -412,15 +412,16 @@ export default {
       const boardFeet = (item.width * item.thickness * item.length) / 12 * item.quantity;
       item.total_bf = boardFeet;
 
-      // Calculate amount: BF × (Price per MBF / 1000)
-      const amount = boardFeet * (item.price_per_mbf / 1000);
+      // Calculate base amount without tax: BF × (Price per MBF / 1000)
+      const baseAmount = boardFeet * (item.price_per_mbf / 1000);
 
       // Calculate tax based on the selected tax rate
       const taxRate = this.customerIsTaxExempt ? 0 : (this.selectedSalesTax ? this.selectedSalesTax.tax_rate : 0);
-      item.tax_amount = amount * taxRate;
+      item.tax_amount = baseAmount * taxRate;
 
-      // Set total amount
-      item.total_amount = amount + item.tax_amount;
+      // Set total amount (base amount plus tax)
+      item.total_amount = baseAmount;
+      item.total_tax = item.tax_amount;
 
       this.calculateTotals();
     },
@@ -450,20 +451,22 @@ export default {
       }
     },
     calculateSubtotal() {
-      return this.ticket.items.reduce((sum, item) => sum + (item.total_amount - item.tax_amount), 0);
+      // Calculate subtotal (sum of item totals without tax)
+      return this.ticket.items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
     },
     calculateGrandTotal() {
-      return this.ticket.total_amount + (this.ticket.total_freight || 0);
+      // Calculate grand total (subtotal + tax + freight)
+      return this.calculateSubtotal() + Number(this.ticket.total_tax || 0) + Number(this.ticket.total_freight || 0);
     },
     calculateTotals() {
       // Calculate total board feet
-      this.ticket.total_bf = this.ticket.items.reduce((sum, item) => sum + item.total_bf, 0);
+      this.ticket.total_bf = this.ticket.items.reduce((sum, item) => sum + (item.total_bf || 0), 0);
 
       // Calculate total tax
-      this.ticket.total_tax = this.ticket.items.reduce((sum, item) => sum + item.tax_amount, 0);
+      this.ticket.total_tax = this.ticket.items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
 
-      // Calculate total amount (excluding freight in the saved model)
-      this.ticket.total_amount = this.ticket.items.reduce((sum, item) => sum + item.total_amount, 0);
+      // Calculate total amount (sum of all item totals without tax)
+      this.ticket.total_amount = this.calculateSubtotal();
     },
     async saveTicket() {
       this.saving = true;
@@ -794,29 +797,15 @@ export default {
     // METHOD: Recalculate tax for all items
     recalculateTax() {
       // Update tax calculations for all items based on the selected tax rate
-      this.ticket.items.forEach(item => {
-        // Board Feet calculation: (Width × Thickness × Length) / 12
-        const boardFeet = (item.width * item.thickness * item.length) / 12 * item.quantity;
-        item.total_bf = boardFeet;
-
-        // Calculate amount: BF × (Price per MBF / 1000)
-        const amount = boardFeet * (item.price_per_mbf / 1000);
-
-        // Get the selected tax rate
-        const taxRate = this.customerIsTaxExempt ? 0 : (this.selectedSalesTax ? this.selectedSalesTax.tax_rate : 0);
-
-        // Calculate tax amount
-        item.tax_amount = amount * taxRate;
-
-        // Set total amount (including tax)
-        item.total_amount = amount + item.tax_amount;
+      this.ticket.items.forEach((item, index) => {
+        this.calculateItemTotal(index);
       });
 
       // Recalculate totals
       this.calculateTotals();
     }
   },
-  
+
   created() {
     // Load sales tax rates and shipping methods first
     Promise.all([
