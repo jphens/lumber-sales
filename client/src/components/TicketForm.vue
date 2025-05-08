@@ -678,7 +678,16 @@ export default {
 
     // Handle keyboard navigation for customer results
     handleCustomerKeydown(event) {
-      if (!this.showResults || this.customerResults.length === 0) return;
+      if (!this.showResults) return;
+
+      // Auto-select if there's exactly one result and user presses Enter or Tab
+      if ((event.key === 'Enter' || event.key === 'Tab') && this.customerResults.length === 1) {
+        event.preventDefault();
+        this.selectCustomer(this.customerResults[0]);
+        return;
+      }
+
+      if (this.customerResults.length === 0) return;
 
       // Down arrow key
       if (event.key === 'ArrowDown') {
