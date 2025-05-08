@@ -305,6 +305,7 @@ export default {
         total_amount: 0,
         items: []
       },
+      isInitialLoad: true, // Flag to indicate if it's the initial load
       isEditMode: false,
       loading: false,
       saving: false,
@@ -394,13 +395,16 @@ export default {
       this.ticket.items.push(newItem);
       this.calculateItemTotal(this.ticket.items.length - 1);
 
-      // Focus on the first field of the new row after Vue updates the DOM
-      nextTick(() => {
-        const firstFields = this.$refs.firstField;
-        if (firstFields && firstFields.length) {
-          firstFields[firstFields.length - 1].focus();
-        }
-      });
+      // Only focus on the species field if it's not the initial load
+      if (!this.isInitialLoad) {
+        nextTick(() => {
+          const firstFields = this.$refs.firstField;
+          if (firstFields && firstFields.length) {
+            firstFields[firstFields.length - 1].focus();
+          }
+        });
+      }
+      this.isInitialLoad = false; // Set to false after form first loads
     },
     // Add validation to prevent removing the last item
     removeItem(index) {
@@ -878,6 +882,12 @@ export default {
         this.loadTicket();
       }
     });
+  },
+  mounted() {
+    // Focus on customer search input when the form is first opened
+    if (this.$refs.customerSearchInput) {
+      this.$refs.customerSearchInput.focus();
+    }
   }
 };
 </script>
