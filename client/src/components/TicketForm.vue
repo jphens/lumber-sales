@@ -372,7 +372,7 @@ export default {
       return 'T' + Date.now().toString();
     },
     formatNumber(value) {
-      return Number(value || 0).toFixed(2);
+      return Number(value || 0).toFixed(0);
     },
     formatCurrency(value) {
       return Number(value || 0).toFixed(2);
@@ -419,7 +419,7 @@ export default {
 
       // Board Feet calculation: (Width × Thickness × Length) / 12
       const boardFeet = (item.width * item.thickness * item.length) / 12 * item.quantity;
-      item.total_bf = boardFeet;
+      item.total_bf = Math.round(boardFeet);
 
       // Calculate base amount without tax: BF × (Price per MBF / 1000)
       const baseAmount = boardFeet * (item.price_per_mbf / 1000);

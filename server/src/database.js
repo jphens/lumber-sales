@@ -158,11 +158,11 @@ const initDb = () => {
   // Drop the existing tickets table if it exists
   // WARNING: This will delete all existing tickets!
   // TODO: remove this line when deploying to production
-  db.exec(`DROP TABLE IF EXISTS tickets`);
+  // db.exec(`DROP TABLE IF EXISTS tickets`);
 
   // Drop the existing ticket_items table if it exists
   // TODO: remove this line when deploying to production
-  db.exec(`DROP TABLE IF EXISTS ticket_items`);
+  // db.exec(`DROP TABLE IF EXISTS ticket_items`);
 
   // Create tickets table with new fields including ship_via_id and sales_tax_id
   db.exec(`
