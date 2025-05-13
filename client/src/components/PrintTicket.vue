@@ -15,116 +15,151 @@
       </div>
 
       <div class="ticket-container">
-        <div class="company-header">
-          <h1>Lumber Sales Receipt</h1>
-          <p>{{ companyInfo.name }}</p>
-          <p>{{ companyInfo.address }}</p>
-          <p>Phone: {{ companyInfo.phone }}</p>
-        </div>
+        <!-- TOP SECTION: Header with company and customer info -->
+        <div class="header-section">
+          <div class="header-left">
+            <!-- Company Info -->
+            <div class="company-info">
+              <h1 class="company-name">{{ companyInfo.name }}</h1>
+              <p>{{ companyInfo.address }}</p>
+              <p>{{ companyInfo.phone }}</p>
+            </div>
 
-        <div class="ticket-details">
-          <div class="row">
-            <div class="col-md-6">
-              <strong>Customer:</strong> {{ ticket.customerName }}<br>
-              <strong>Phone:</strong> {{ ticket.customerPhone }}<br>
-              <strong>PO #:</strong> {{ ticket.purchase_order || 'None' }}
-
-              <div v-if="billingAddress" class="mt-2">
-                <strong>Billing Address:</strong><br>
-                <div v-for="(line, index) in formatAddressMultiLine(billingAddress)" :key="`billing-${index}`">
-                  {{ line }}
+            <!-- Sold To Info -->
+            <div class="sold-to">
+              <strong>Sold To:</strong>
+              <div class="customer-details">
+                <p>{{ ticket.customerName }}</p>
+                <div v-if="billingAddress">
+                  <p>{{ billingAddress.address_line1 }}</p>
+                  <p v-if="billingAddress.address_line2">{{ billingAddress.address_line2 }}</p>
+                  <p>{{ formatCityStateZip(billingAddress) }}</p>
                 </div>
+                <p>{{ ticket.customerPhone }}</p>
               </div>
             </div>
-            <div class="col-md-6 text-right">
-              <strong>Invoice #:</strong> {{ ticket.invoice_number }}<br>
-              <strong>Ticket #:</strong> {{ ticket.id }}<br>
-              <strong>Date:</strong> {{ formatDate(ticket.date) }}<br>
-              <strong>Due Date:</strong> {{ formatDate(ticket.due_date) }}<br>
-              <strong>Status:</strong> {{ capitalize(ticket.status) }}<br>
-              <strong>Type:</strong> {{ capitalize(ticket.ticket_type) }}<br>
-              <strong>Ship Via:</strong> {{ ticket.ship_via_name || 'Not specified' }}
-              <strong v-if="ticket.shipping_attention">
-                <br>Attention: {{ ticket.shipping_attention }}
-              </strong>
+          </div>
 
-              <div v-if="shippingAddress" class="mt-2">
-                <strong>Shipping Address:</strong><br>
-                <div v-for="(line, index) in formatAddressMultiLine(shippingAddress)" :key="`shipping-${index}`">
-                  {{ line }}
+          <div class="header-right">
+            <!-- Page and Ticket Info -->
+            <div class="ticket-info">
+              <p>Page: 1</p>
+              <p>Number: {{ ticket.invoice_number || 'DRAFT' }}</p>
+              <p>Date: {{ formatDate(ticket.date) }}</p>
+            </div>
+
+            <!-- Ship To Info -->
+            <div class="ship-to">
+              <strong>Ship To:</strong>
+              <div class="shipping-details">
+                <div v-if="shippingAddress">
+                  <p>{{ ticket.customerName }}</p>
+                  <p v-if="ticket.shipping_attention">Attention: {{ ticket.shipping_attention }}</p>
+                  <p>{{ shippingAddress.address_line1 }}</p>
+                  <p v-if="shippingAddress.address_line2">{{ shippingAddress.address_line2 }}</p>
+                  <p>{{ formatCityStateZip(shippingAddress) }}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="lumber-items mt-4">
-          <table class="table table-bordered">
+        <!-- Order Details Row -->
+        <div class="order-details-row">
+          <div class="detail-item">
+            <span class="detail-label">Customer Order No:</span>
+            <span class="detail-value">{{ ticket.purchase_order || 'N/A' }}</span>
+          </div>
+          <div class="detail-item">
+            <!-- <span class="detail-label">Type:</span> -->
+            <!-- <span class="detail-value">{{ ticket.ticket_type.toUpperCase() }}</span> -->
+          </div>
+          <div class="detail-item">
+            <!-- <span class="detail-label">Status:</span> -->
+            <!-- <span class="detail-value">{{ ticket.status.toUpperCase() }}</span> -->
+          </div>
+          <div class="detail-item">
+            <!-- <span class="detail-label">Ship Via:</span> -->
+            <!-- <span class="detail-value">{{ ticket.ship_via_name || 'N/A' }}</span> -->
+          </div>
+        </div>
+
+        <!-- MIDDLE SECTION: Line Items Table -->
+        <div class="line-items-section">
+          <table class="items-table">
+            <!-- TABLE HEADERS -->
             <thead>
               <tr>
-                <th>Species</th>
-                <th>Qty</th>
-                <th>Dimensions (inches)</th>
-                <th>Length (ft)</th>
-                <th>Board Feet</th>
-                <th>Price/MBF</th>
-                <th>Amount</th>
-                <th>Tax</th>
-                <th>Total</th>
+                <th>Number/Desc</th>
+                <th class="qty">Qty</th>
+                <th class="dimensions">Dimensions</th>
+                <th class="board-feet">Board Ft</th>
+                <th class="price">Price</th>
+                <th class="ext">Ext</th>
               </tr>
             </thead>
+            <!-- TABLE BODY -->
             <tbody>
               <tr v-for="(item, index) in ticket.items" :key="index">
-                <td>{{ getSpeciesName(item) }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.thickness }} x {{ item.width }}</td>
-                <td>{{ item.length }}</td>
-                <td>{{ formatNumber(item.total_bf) }}</td>
-                <td>${{ formatCurrency(item.price_per_mbf) }}</td>
-                <td>${{ formatCurrency(item.total_amount) }}</td>
-                <td>${{ formatCurrency(item.tax_amount || 0) }}</td>
-                <td>${{ formatCurrency(Number(item.total_amount) + Number(item.tax_amount)) }}</td>
+                <td class="species">{{ getSpeciesNumber(item) }}−{{ getSpeciesName(item) }}</td>
+                <td class="qty">{{ item.quantity }}</td>
+                <td class="dimensions">
+                  <span class="dimension-value">{{ formatDecimal(item.thickness) }}</span>
+                  <span class="dimension-separator">x</span>
+                  <span class="dimension-value">{{ formatDecimal(item.width) }}</span>
+                  <span class="dimension-separator">x</span>
+                  <span class="dimension-value">{{ formatDecimal(item.length) }}</span>
+                </td>
+                <td class="board-feet">{{ formatNumber(item.total_bf) }}</td>
+                <td class="price">{{ formatMoney(item.price_per_mbf) }}</td>
+                <td class="ext">{{ formatMoney(item.total_amount) }}</td>
               </tr>
             </tbody>
+            <!-- TABLE FOOTER -->
+            <tfoot>
+              <tr>
+                <th></th>
+                <th class="qty"></th>
+                <!-- <th class="dimensions-footer">Total BF: </th> -->
+                <th class="dimensions-footer"></th>
+                <th class="board-feet">{{ formatNumber(ticket.total_bf) }}</th>
+                <th class="price"></th>
+                <th class="ext">{{ formatMoney(ticket.total_amount) }}</th>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
-        <div class="totals mt-4">
-          <div class="row">
-            <div class="col-md-6 offset-md-6">
-              <table class="table table-bordered">
-                <tbody>
-                  <tr>
-                    <th>Subtotal:</th>
-                    <td>${{ formatCurrency(ticket.total_amount) }}</td>
-                  </tr>
-                  <tr v-if="ticket.total_freight > 0">
-                    <th>Freight:</th>
-                    <td>${{ formatCurrency(ticket.total_freight) }}</td>
-                  </tr>
-                  <tr>
-                    <th>Tax ({{ formatTaxInfo() }}):</th>
-                    <td>${{ formatCurrency(ticket.total_tax) }}</td>
-                  </tr>
-                  <tr>
-                    <th>Total:</th>
-                    <td>${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax) +
-                      Number(ticket.total_freight)) }}</td>
-                  </tr>
-                  <tr>
-                    <th>Total Board Feet:</th>
-                    <td>{{ formatNumber(ticket.total_bf) }}</td>
-                  </tr>
-                </tbody>
-              </table>
+        <!-- BOTTOM SECTION: Totals -->
+        <div class="totals-section">
+          <div class="totals-grid">
+            <div class="totals-label">
+              <!-- <p>Subtotal</p> -->
+              <p>Sales Tax</p>
+              <p>Freight</p>
+            </div>
+            <!-- <div class="totals-column board-feet-total">
+              <p>{{ formatNumber(ticket.total_bf) }}</p>
+            </div> -->
+            <div class="totals-column amount-total">
+              <!-- <p>{{ formatMoney(ticket.total_amount) }}</p> -->
+              <p>{{ formatMoney(ticket.total_tax) }}</p>
+              <p>{{ formatMoney(ticket.total_freight) }}</p>
+              <p class="total-line">{{ formatMoney(calculateGrandTotal()) }}</p>
             </div>
           </div>
         </div>
 
-        <div class="footer mt-5">
-          <p><em>Balance is due in 30-days from the invoice date. Past due balances are subject to a late payment charge
-              of up to 1.5% per month, or 18% per year</em></p>
-          <p><em>Thank you for your business!</em></p>
+        <!-- Footer -->
+        <div class="footer-section">
+          <div class="signature-blocks">
+            <div class="signature-block">
+              <p>RECEIVED BY ___________________</p>
+            </div>
+            <div class="signature-block">
+              <p>DELIVERED BY ___________________</p>
+            </div>
+          </div>
         </div>
       </div>
     </template>
@@ -132,7 +167,7 @@
 </template>
 
 <script>
-import { TicketService } from '../services/api';
+import { TicketService, SpeciesService } from '../services/api';
 import config from '../config';
 
 export default {
@@ -169,6 +204,7 @@ export default {
       billingAddress: null,
       shippingAddress: null,
       companyInfo: config.company,
+      speciesList: [],
       loading: true,
       error: null
     };
@@ -178,13 +214,19 @@ export default {
       this.loading = true;
 
       try {
-        this.ticket = await TicketService.getTicket(this.id);
+        const [ticket, speciesList] = await Promise.all([
+          TicketService.getTicket(this.id),
+          SpeciesService.getAllSpecies()
+        ]);
 
-        if (!this.ticket) {
+        if (!ticket) {
           this.error = 'Ticket not found!';
           this.$router.push('/list');
           return;
         }
+
+        this.ticket = ticket;
+        this.speciesList = speciesList;
 
         // Extract billing and shipping addresses
         if (this.ticket.billingAddress1) {
@@ -222,58 +264,67 @@ export default {
         this.loading = false;
       }
     },
-    calculateSubtotal() {
-      // Since total_amount now represents the base amount (not including tax),
-      // we can just return it directly
-      return this.ticket.total_amount;
+    calculateGrandTotal() {
+      return Number(this.ticket.total_amount) +
+        Number(this.ticket.total_tax) +
+        Number(this.ticket.total_freight);
     },
     formatDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
-      return date.toLocaleDateString();
+      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     },
     formatNumber(value) {
+      return Number(value || 0).toFixed(0);
+    },
+    formatMoney(value) {
       return Number(value || 0).toFixed(2);
     },
-    formatCurrency(value) {
-      return Number(value || 0).toFixed(2);
-    },
-    formatTaxInfo() {
-      if (this.ticket.sales_tax_name) {
-        const taxRate = (Number(this.ticket.sales_tax_rate || 0) * 100).toFixed(2);
-        return `${this.ticket.sales_tax_name} ${taxRate}%`;
-      }
-      return this.ticket.total_tax > 0 ? 'Sales Tax' : 'Tax Exempt';
-    },
-    formatAddressMultiLine(address) {
-      if (!address) return [];
-
-      const lines = [
-        address.address_line1
-      ];
-
-      if (address.address_line2) {
-        lines.push(address.address_line2);
-      }
-
-      let cityLine = `${address.city}, ${address.state} ${address.postal_code}`;
+    formatCityStateZip(address) {
+      if (!address) return '';
+      let line = `${address.city}, ${address.state} ${address.postal_code}`;
       if (address.county) {
-        cityLine = `${address.city}, ${address.county} County, ${address.state} ${address.postal_code}`;
+        line = `${address.city}, ${address.county}, ${address.state} ${address.postal_code}`;
       }
-      lines.push(cityLine);
+      return line;
+    },
+    formatDimensions(item) {
+      const thickness = Number(item.thickness).toFixed(2);
+      const width = Number(item.width).toFixed(2);
+      const length = Number(item.length).toFixed(2);
 
-      if (address.country && address.country !== 'USA') {
-        lines.push(address.country);
-      }
+      // Create fixed-width strings for alignment
+      const thicknessStr = thickness.padStart(5, ' ');
+      const widthStr = width.padStart(5, ' ');
+      const lengthStr = length.padStart(5, ' ');
 
-      return lines;
+      return `${thicknessStr} X ${widthStr} X ${lengthStr}`;
+    },
+    formatDecimal(value) {
+      // Format number to always show 2 decimal places
+      return Number(value).toFixed(2);
     },
     getSpeciesName(item) {
-      return item.speciesListName || item.speciesName || 'Unknown Species';
+      // Try to find the species from the loaded species list
+      if (this.speciesList.length > 0 && item.species_id) {
+        const species = this.speciesList.find(s => s.id === item.species_id);
+        if (species) {
+          return species.name;
+        }
+      }
+      // Fallback to data from the item
+      return item.speciesName || 'Unknown Species';
     },
-    capitalize(str) {
-      if (!str) return '';
-      return str.charAt(0).toUpperCase() + str.slice(1);
+    getSpeciesNumber(item) {
+      // Try to find the species from the loaded species list
+      if (this.speciesList.length > 0 && item.species_id) {
+        const species = this.speciesList.find(s => s.id === item.species_id);
+        if (species) {
+          return species.species_number.padStart(3, '0');
+        }
+      }
+      // Fallback to default
+      return '000';
     },
     print() {
       window.print();
@@ -292,44 +343,345 @@ export default {
 .print-ticket {
   max-width: 800px;
   margin: 0 auto;
+  font-family: 'Courier New', monospace;
+}
+
+@media screen {
+  .print-controls {
+    margin-bottom: 20px;
+    padding: 20px 0;
+  }
+}
+
+.ticket-container {
   padding: 20px;
+  background: white;
+  font-size: 10pt;
+  line-height: 1.2;
 }
 
-.print-controls {
-  margin-bottom: 20px;
+/* Header Section */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 9pt;
 }
 
-.company-header {
+.header-left,
+.header-right {
+  width: 48%;
+}
+
+.company-name {
+  font-size: 14pt;
+  font-weight: bold;
+  margin: 0 0 3px 0;
+}
+
+.company-info p,
+.ticket-info p,
+.customer-details p,
+.shipping-details p {
+  margin: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.company-info {
+  margin-bottom: 15px;
+}
+
+.sold-to,
+.ship-to {
+  margin-top: 8px;
+}
+
+.sold-to strong,
+.ship-to strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.ticket-info {
+  text-align: right;
+  margin-bottom: 15px;
+}
+
+/* Order Details Row */
+.order-details-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 5px 0px 0px;
+  font-size: 9pt;
+}
+
+.detail-item {
+  white-space: nowrap;
+}
+
+.detail-label {
+  font-weight: bold;
+  margin-right: 3px;
+}
+
+.detail-value {
+  text-transform: uppercase;
+}
+
+/* Line Items Section */
+.line-items-section {
+  margin: 15px 0;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.items-table th {
+  /* border-top: 1px solid #000;
+  border-bottom: 1px solid #000; */
+  padding: 3px 5px;
+  text-align: left;
+  font-weight: normal;
+}
+
+.items-table td {
+  padding: 2px 5px;
+  vertical-align: top;
+}
+
+.items-table .species {
+  width: 150px;
+  margin: 0px 2px;
+  /* border-right: #000 1px solid; */
+}
+
+.items-table .qty {
   text-align: center;
-  margin-bottom: 30px;
+  max-width: 40px;
+  padding-right: 20px;
+  /* border-right: #000 1px solid; */
 }
 
-.company-header p {
-  margin: 0;
+.items-table .board-feet,
+.items-table .price,
+.items-table .ext {
+  text-align: right;
+  width: 70px;
 }
 
-.ticket-details {
-  margin-bottom: 20px;
-}
-
-.footer {
+.items-table .dimensions {
+  width: 180px;
+  font-family: 'Courier New', monospace;
   text-align: center;
+  white-space: nowrap;
 }
 
-.loading,
-.error {
+.dimension-value {
+  display: inline-block;
+  width: 35px;
+  text-align: right;
+}
+
+.dimension-separator {
+  display: inline-block;
+  width: 10px;
   text-align: center;
+  padding: 0px 20px;
+}
+
+.tfooter {
+  border-top: none
+}
+
+.items-table .dimensions-footer {
+  text-align: right;
+  font-weight: bold;
+  padding-right: 20px;
+}
+
+/* Totals Section */
+.totals-section {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.totals-grid {
+  display: flex;
+  gap: 30px;
+  font-size: 9pt;
+  /* border: #000 1px solid; */
+}
+
+.totals-label {
+  text-align: right;
+  /* border: #000 1px solid; */
+}
+
+.totals-label p {
+  margin: 1px 0;
+  font-weight: bold;
+}
+
+.totals-column {
+  text-align: right;
+  min-width: 80px;
+  /* border: #000 1px solid; */
+}
+
+.totals-column p {
+  margin: 1px 0;
+}
+
+.board-feet-total {
+  position: relative;
+  top: -20px;
+  border-top: 1px solid #000;
+  padding-top: 2px;
+}
+
+.amount-total {
+  border-top: 1px solid #000;
+  padding-top: 2px;
+}
+
+.total-line {
+  border-top: 1px solid #000;
+  padding-top: 2px;
+  font-weight: bold;
+}
+
+/* Footer Section */
+.footer-section {
+  margin-top: 40px;
+}
+
+.signature-blocks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+}
+
+.signature-block {
+  width: 40%;
+}
+
+.signature-block p {
+  margin: 25px 0 0 0;
+  font-size: 9pt;
+}
+
+/* Line Items Section */
+.line-items-section {
   margin: 20px 0;
-  padding: 10px;
 }
 
-.error {
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
 }
 
+.items-table th {
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+  padding: 5px;
+  text-align: left;
+  font-weight: normal;
+}
+
+.items-table td {
+  padding: 3px 5px;
+  vertical-align: top;
+}
+
+.items-table .qty,
+.items-table .board-feet,
+.items-table .price,
+.items-table .ext {
+  text-align: right;
+  width: 70px;
+}
+
+.items-table .dimensions {
+  width: 120px;
+}
+
+/* TOTALS SECTION CSS */
+.totals-section {
+  margin-top: 30px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.totals-grid {
+  display: flex;
+  gap: 30px;
+  font-size: 9pt;
+}
+
+.totals-label {
+  text-align: right;
+}
+
+.totals-label p {
+  margin: 2px 0;
+  font-weight: bold;
+}
+
+.totals-column {
+  text-align: right;
+  min-width: 80px;
+}
+
+.totals-column p {
+  margin: 2px 0;
+}
+
+.board-feet-total {
+  position: relative;
+  top: -30px;
+  border-top: 1px solid #000;
+  padding-top: 3px;
+}
+
+.amount-total {
+  border-top: 1px solid #000;
+  padding-top: 3px;
+}
+
+.total-line {
+  border-top: 1px solid #000;
+  padding-top: 3px;
+  font-weight: bold;
+}
+
+/* Footer Section */
+.footer-section {
+  margin-top: 50px;
+}
+
+.signature-blocks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 50px;
+}
+
+.signature-block {
+  width: 40%;
+}
+
+.signature-block p {
+  margin: 30px 0 0 0;
+  font-size: 9pt;
+}
+
+/* Print Styles */
 @media print {
 
   .print-controls,
@@ -338,12 +690,30 @@ export default {
     display: none;
   }
 
-  body {
-    font-size: 12pt;
-  }
-
   .print-ticket {
     padding: 0;
+    margin: 0;
+  }
+
+  .ticket-container {
+    padding: 0;
+    font-size: 10pt;
+  }
+
+  body {
+    font-family: 'Courier New', monospace;
+  }
+
+  .header-section {
+    page-break-inside: avoid;
+  }
+
+  .line-items-section {
+    page-break-inside: avoid;
+  }
+
+  .totals-section {
+    page-break-inside: avoid;
   }
 }
 </style>
