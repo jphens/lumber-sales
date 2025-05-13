@@ -36,7 +36,7 @@
                   <p v-if="billingAddress.address_line2">{{ billingAddress.address_line2 }}</p>
                   <p>{{ formatCityStateZip(billingAddress) }}</p>
                 </div>
-                <p>{{ ticket.customerPhone }}</p>
+                <!-- <p>{{ ticket.customerPhone }}</p> -->
               </div>
             </div>
           </div>
@@ -55,7 +55,7 @@
               <div class="shipping-details">
                 <div v-if="shippingAddress">
                   <p>{{ ticket.customerName }}</p>
-                  <p v-if="ticket.shipping_attention">Attention: {{ ticket.shipping_attention }}</p>
+                  <!-- <p v-if="ticket.shipping_attention">Attention: {{ ticket.shipping_attention }}</p> -->
                   <p>{{ shippingAddress.address_line1 }}</p>
                   <p v-if="shippingAddress.address_line2">{{ shippingAddress.address_line2 }}</p>
                   <p>{{ formatCityStateZip(shippingAddress) }}</p>
@@ -138,6 +138,7 @@
               <!-- <p>Subtotal</p> -->
               <p>Sales Tax</p>
               <p>Freight</p>
+              <p class="total-label">Total</p>
             </div>
             <!-- <div class="totals-column board-feet-total">
               <p>{{ formatNumber(ticket.total_bf) }}</p>
@@ -155,10 +156,10 @@
         <div class="footer-section">
           <div class="signature-blocks">
             <div class="signature-block">
-              <p>RECEIVED BY ___________________</p>
+              <p>RECEIVED BY ______________________________</p>
             </div>
             <div class="signature-block">
-              <p>DELIVERED BY ___________________</p>
+              <p>DELIVERED BY _____________________________</p>
             </div>
           </div>
         </div>
@@ -367,11 +368,14 @@ export default {
   justify-content: space-between;
   margin-bottom: 10px;
   font-size: 9pt;
+  align-items: stretch;
 }
 
 .header-left,
 .header-right {
   width: 48%;
+  display: flex;
+  flex-direction: column;
 }
 
 .company-name {
@@ -400,13 +404,21 @@ export default {
 
 .sold-to strong,
 .ship-to strong {
-  display: block;
-  margin-bottom: 3px;
+  margin-top: 8px;
+  flex: 1;
+  /* display: block;
+  margin-bottom: 3px; */
+}
+
+.company-info {
+  margin-bottom: 15px;
+  min-height: 60px;
 }
 
 .ticket-info {
   text-align: right;
   margin-bottom: 15px;
+  min-height: 60px;
 }
 
 /* Order Details Row */
@@ -542,17 +554,22 @@ export default {
 .board-feet-total {
   position: relative;
   top: -20px;
-  border-top: 1px solid #000;
+  /* border-top: 1px solid #000; */
   padding-top: 2px;
 }
 
 .amount-total {
-  border-top: 1px solid #000;
+  /* border-top: 1px solid #000; */
   padding-top: 2px;
 }
 
+.totals-label p {
+  padding-top: 2px;
+  font-weight: bold;
+}
+
 .total-line {
-  border-top: 1px solid #000;
+  /* border-top: 1px solid #000; */
   padding-top: 2px;
   font-weight: bold;
 }
@@ -652,7 +669,7 @@ export default {
 }
 
 .amount-total {
-  border-top: 1px solid #000;
+  /* border-top: 1px solid #000; */
   padding-top: 3px;
 }
 
