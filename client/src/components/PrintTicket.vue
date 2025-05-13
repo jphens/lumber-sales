@@ -15,6 +15,7 @@
       </div>
 
       <div class="ticket-container">
+
         <!-- TOP SECTION: Header with company and customer info -->
         <div class="header-section">
           <div class="header-left">
@@ -275,10 +276,10 @@ export default {
       return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     },
     formatNumber(value) {
-      return Number(value || 0).toFixed(0);
+      return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     },
     formatMoney(value) {
-      return Number(value || 0).toFixed(2);
+      return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
     formatCityStateZip(address) {
       if (!address) return '';

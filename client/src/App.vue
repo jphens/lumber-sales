@@ -30,5 +30,9 @@
   nav {
     display: none;
   }
+    nav,
+    .navbar {
+      display: none !important;
+    }
 }
 </style>
