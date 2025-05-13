@@ -422,7 +422,7 @@ export default {
       item.total_bf = Math.round(boardFeet);
 
       // Calculate base amount without tax: BF × (Price per MBF / 1000)
-      const baseAmount = boardFeet * (item.price_per_mbf / 1000);
+      const baseAmount = item.total_bf * (item.price_per_mbf / 1000);
 
       // Calculate tax based on the selected tax rate
       const taxRate = this.customerIsTaxExempt ? 0 : (this.selectedSalesTax ? this.selectedSalesTax.tax_rate : 0);
