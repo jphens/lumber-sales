@@ -25,6 +25,18 @@ const PartyModel = {
   },
 
   /**
+   * Get party by party_number
+   * @param {string} partyNumber - Party number
+   * @returns {Object|null} Party object
+   */
+  getByPartyNumber(partyNumber) {
+    const stmt = db.prepare(`
+    SELECT * FROM parties WHERE party_number = ?
+  `);
+    return stmt.get(partyNumber);
+  },
+  
+  /**
    * Get parties by type
    * @param {string} type - Party type name (e.g., 'customer', 'vendor')
    * @returns {Array} Array of party objects
@@ -71,7 +83,7 @@ const PartyModel = {
       )
       VALUES (?, ?, ?, ?, ?, ?)
     `);
-    
+
     const result = stmt.run(
       party.party_number,
       party.name,
@@ -104,7 +116,7 @@ const PartyModel = {
           notes = ?
       WHERE id = ?
     `);
-    
+
     stmt.run(
       party.party_number,
       party.name,
@@ -162,9 +174,9 @@ const PartyModel = {
     return {
       ...party,
       addresses,
-      types
+      types,
     };
-  }
+  },
 };
 
 module.exports = PartyModel;

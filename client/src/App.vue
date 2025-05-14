@@ -14,13 +14,16 @@
             <li class="nav-item">
               <router-link class="nav-link" to="/list">View Tickets</router-link>
             </li>
+            <li class="nav-item">
+              <router-link class="nav-link" to="/customers">Customers</router-link>
+            </li>
           </ul>
         </div>
       </div>
     </nav>
-    
+
     <div class="container mt-4">
-      <router-view/>
+      <router-view />
     </div>
   </div>
 </template>
