@@ -377,11 +377,12 @@ export default {
       return 'T' + Date.now().toString();
     },
     formatNumber(value) {
-      return Number(value || 0).toFixed(0);
+      return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     },
     formatCurrency(value) {
-      return Number(value || 0).toFixed(2);
+      return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
+  
     formatPercent(value) {
       return (Number(value || 0) * 100).toFixed(2) + '%';
     },
