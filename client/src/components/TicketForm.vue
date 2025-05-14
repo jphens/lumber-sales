@@ -1157,7 +1157,7 @@ export default {
   margin: 0;
 }
 
-.ticket-form input[type="number"] {
+/* .ticket-form input[type="number"] {
   -moz-appearance: textfield;
-}
+} */
 </style>
