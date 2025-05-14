@@ -156,10 +156,10 @@
         <div class="footer-section">
           <div class="signature-blocks">
             <div class="signature-block">
-              <p>RECEIVED BY ______________________________</p>
+              <p>RECEIVED BY ____________________</p>
             </div>
             <div class="signature-block">
-              <p>DELIVERED BY _____________________________</p>
+              <p>DELIVERED BY ____________________</p>
             </div>
           </div>
         </div>

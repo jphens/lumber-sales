@@ -37,10 +37,10 @@
             <label>Date</label>
             <input type="date" v-model="ticket.date" class="form-control" />
           </div>
-          <div class="form-group">
+          <!-- <div class="form-group">
             <label>Due Date</label>
             <input type="date" v-model="ticket.due_date" class="form-control" />
-          </div>
+          </div> -->
           <div class="form-group">
             <label>Invoice #</label>
             <!-- Only show invoice number when editing an existing ticket -->
@@ -53,7 +53,7 @@
             <label>Customer Name</label>
             <input v-model="ticket.customerName" class="form-control" />
           </div>
-          <div class="form-group">
+          <!-- <div class="form-group">
             <label>Type</label>
             <select v-model="ticket.ticket_type" class="form-control">
               <option value="invoice">Invoice</option>
@@ -70,7 +70,7 @@
               <option value="paid">Purchase Order</option>
               <option value="void">Bill of Lading</option>
             </select>
-          </div>
+          </div> -->
           <div class="form-group">
             <label>Customer PO#</label>
             <input v-model="ticket.purchase_order" class="form-control" />
@@ -100,7 +100,7 @@
           </div>
         </div>
         <div class="shipping-details">
-          <div class="form-group">
+          <!-- <div class="form-group">
             <label>Customer Email</label>
             <input v-model="customerData.email" class="form-control" v-if="customerData" />
             <input class="form-control" disabled v-else placeholder="Select a customer first" />
@@ -120,7 +120,7 @@
           <div class="form-group">
             <label>Attention to</label>
             <input v-model="ticket.shipping_attention" class="form-control" />
-          </div>
+          </div> -->
           <div class="form-group hidden">
             <label>Sales Tax</label>
             <select v-model="ticket.sales_tax_id" class="form-control" @change="recalculateTax">
