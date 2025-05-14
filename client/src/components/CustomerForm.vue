@@ -11,6 +11,7 @@
         </div>
 
         <template v-else>
+
             <!-- Customer Information Section -->
             <div class="form-section">
                 <h3>Customer Information</h3>
@@ -40,13 +41,10 @@
                     </div>
                     <div class="form-group">
                         <label>Tax Status</label>
-                        <div class="form-check">
-                            <input v-model="formData.sales_tax_exempt" type="checkbox" class="form-check-input"
-                                id="taxExempt" />
-                            <label class="form-check-label" for="taxExempt">
-                                Sales Tax Exempt
-                            </label>
-                        </div>
+                        <select v-model="formData.sales_tax_exempt" class="form-control">
+                            <option :value="false">Taxable</option>
+                            <option :value="true">Tax Exempt</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -71,7 +69,7 @@
                             <th>County</th>
                             <th>State</th>
                             <th>Zip</th>
-                            <th>Billing</th>
+                            <th>Default Billing</th>
                             <th>Default Shipping</th>
                             <th>Actions</th>
                         </tr>
@@ -187,7 +185,10 @@ export default {
             error: null,
             customerId: null,
             partyId: null,
-            nextTempId: 1
+            nextTempId: 1,
+            // Add these for tracking defaults
+            default_billing_address_id: null,
+            default_shipping_address_id: null
         };
     },
     methods: {
@@ -198,7 +199,7 @@ export default {
             this.loading = true;
 
             try {
-                // Load customer with addresses - this method already exists in the API
+                // Load customer with addresses
                 const customer = await CustomerService.getCustomerWithAddresses(this.id);
 
                 // Set form data
@@ -213,7 +214,11 @@ export default {
                     sales_tax_exempt: customer.sales_tax_exempt === 1
                 };
 
-                // Load addresses - the existing API returns them as "allAddresses"
+                // Store the default IDs
+                this.default_billing_address_id = customer.default_billing_address_id;
+                this.default_shipping_address_id = customer.default_shipping_address_id;
+
+                // Load addresses and mark defaults
                 this.addresses = customer.allAddresses.map(addr => ({
                     ...addr,
                     is_billing: customer.default_billing_address_id === addr.id,
@@ -279,17 +284,29 @@ export default {
         },
 
         setBillingAddress(index) {
-            // Uncheck all others, then check this one
+            // Store the current tax exempt value
+            const currentTaxExempt = this.formData.sales_tax_exempt;
+
+            // Update addresses
             this.addresses.forEach((addr, i) => {
                 addr.is_billing = i === index;
             });
+
+            // Restore tax exempt value (in case it got mutated)
+            this.formData.sales_tax_exempt = currentTaxExempt;
         },
 
         setDefaultShipping(index) {
-            // Uncheck all others, then check this one
+            // Store the current tax exempt value
+            const currentTaxExempt = this.formData.sales_tax_exempt;
+
+            // Update addresses
             this.addresses.forEach((addr, i) => {
                 addr.is_default_shipping = i === index;
             });
+
+            // Restore tax exempt value (in case it got mutated)
+            this.formData.sales_tax_exempt = currentTaxExempt;
         },
 
         closeModal() {
@@ -331,7 +348,7 @@ export default {
                     savedPartyId = this.partyId;
                     savedCustomerId = this.customerId;
 
-                    // Update customer data
+                    // Update customer data WITH sales_tax_exempt
                     await CustomerService.updateCustomer(this.customerId, {
                         sales_tax_exempt: this.formData.sales_tax_exempt
                     });
@@ -349,6 +366,7 @@ export default {
                 }
 
                 // Process addresses
+                const addressIds = {};
                 for (const address of this.addresses) {
                     let addressId;
 
@@ -379,14 +397,25 @@ export default {
                         await AddressService.associateWithParty(savedPartyId, addressId, 'both', false);
                     }
 
-                    // Update billing/shipping defaults
-                    if (address.is_billing || address.is_default_shipping) {
-                        const updates = {};
-                        if (address.is_billing) updates.default_billing_address_id = addressId;
-                        if (address.is_default_shipping) updates.default_shipping_address_id = addressId;
-
-                        await CustomerService.updateCustomer(savedCustomerId, updates);
+                    // Store the IDs of default addresses
+                    if (address.is_billing) {
+                        addressIds.billing = addressId;
                     }
+                    if (address.is_default_shipping) {
+                        addressIds.shipping = addressId;
+                    }
+                }
+
+                // Update billing/shipping defaults if any were selected
+                // IMPORTANT: Include sales_tax_exempt in the update!
+                if (addressIds.billing || addressIds.shipping) {
+                    const updates = {
+                        sales_tax_exempt: this.formData.sales_tax_exempt // ADD THIS LINE
+                    };
+                    if (addressIds.billing) updates.default_billing_address_id = addressIds.billing;
+                    if (addressIds.shipping) updates.default_shipping_address_id = addressIds.shipping;
+
+                    await CustomerService.updateCustomer(savedCustomerId, updates);
                 }
 
                 alert('Customer saved successfully!');
@@ -437,6 +466,33 @@ export default {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 15px;
+}
+
+.tax-field {
+    grid-column: span 1;
+}
+
+.notes-field {
+    grid-column: span 2;
+}
+
+.tax-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.tax-checkbox-wrapper input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+.tax-checkbox-wrapper label {
+    margin: 0;
+    cursor: pointer;
+    font-weight: normal;
 }
 
 .form-group {
