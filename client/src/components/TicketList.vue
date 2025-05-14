@@ -1,26 +1,21 @@
 <template>
   <div class="ticket-list">
     <h2>Saved Tickets</h2>
-    
+
     <div v-if="loading" class="loading">
       Loading tickets...
     </div>
-    
+
     <div v-else-if="error" class="error">
       Error loading tickets: {{ error }}
     </div>
-    
+
     <template v-else>
       <div class="filters mb-3">
         <div class="row">
           <div class="col-md-6">
-            <input 
-              type="text" 
-              v-model="searchTerm" 
-              class="form-control" 
-              placeholder="Search by customer name..."
-              @input="filterTickets"
-            />
+            <input type="text" v-model="searchTerm" class="form-control" placeholder="Search by customer name..."
+              @input="filterTickets" />
           </div>
           <div class="col-md-3">
             <select v-model="statusFilter" class="form-control" @change="filterTickets">
@@ -45,6 +40,7 @@
             <th>Customer</th>
             <th>Status</th>
             <th>Board Feet</th>
+            <th>Items</th> <!-- NEW COLUMN -->
             <th>Subtotal</th>
             <th>Tax</th>
             <th>Total</th>
@@ -62,6 +58,7 @@
               </span>
             </td>
             <td>{{ formatNumber(ticket.total_bf) }}</td>
+            <td>{{ ticket.distribution_total || 0 }}</td> <!-- NEW CELL -->
             <td>${{ formatCurrency(ticket.total_amount) }}</td>
             <td>${{ formatCurrency(ticket.total_tax) }}</td>
             <td>${{ formatCurrency(Number(ticket.total_amount) + Number(ticket.total_tax)) }}</td>
@@ -73,7 +70,7 @@
           </tr>
         </tbody>
       </table>
-      
+
       <div v-if="filteredTickets.length === 0" class="no-tickets">
         {{ tickets.length === 0 ? 'No tickets saved yet.' : 'No tickets match your search criteria.' }}
       </div>

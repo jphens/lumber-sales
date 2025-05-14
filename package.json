@@ -17,7 +17,8 @@
     "start": "cd server && npm run start",
     "seedDB": "node server/src/scripts/seed-data.js",
     "clearDB": "rm -f server/data/lumber-sales.db && echo 'Database file deleted successfully'",
-    "clearandseedDB": "npm run clearDB && npm run seedDB"
+    "clearandseedDB": "npm run clearDB && npm run seedDB",
+    "distributionmigration": "node server/src/database-migrations/add-distribution-fields.js"
   },
   "devDependencies": {
     "concurrently": "^7.6.0"

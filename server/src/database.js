@@ -196,6 +196,11 @@ const initDb = () => {
   )
 `);
 
+  // UPDATE the tickets table to add distribution_total
+//   db.exec(`
+//   ALTER TABLE tickets ADD COLUMN distribution_total INTEGER DEFAULT 0
+// `);
+
   // Create the sequence for invoice_number starting at 29999 (so first one will be 30000)
   try {
     // Check if sequence already exists
@@ -242,6 +247,11 @@ const initDb = () => {
     FOREIGN KEY (species_id) REFERENCES species (id) -- The species can be null
   )
 `);
+
+  // UPDATE the ticket_items table to add distribution_number
+//   db.exec(`
+//   ALTER TABLE ticket_items ADD COLUMN distribution_number INTEGER DEFAULT 0
+// `);
 
   // Create trigger to update the updated_at timestamp for parties
   db.exec(`

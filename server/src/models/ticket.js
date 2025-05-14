@@ -1,4 +1,4 @@
-const db = require('../database');
+const db = require("../database");
 
 const TicketModel = {
   /**
@@ -7,15 +7,15 @@ const TicketModel = {
    */
   getAll() {
     const stmt = db.prepare(`
-      SELECT t.*, p.name as partyName, p.phone as partyPhone,
-             sv.name as ship_via_name, 
-             st.name as sales_tax_name, st.tax_rate as sales_tax_rate
-      FROM tickets t
-      LEFT JOIN parties p ON t.party_id = p.id
-      LEFT JOIN ship_via sv ON t.ship_via_id = sv.id
-      LEFT JOIN sales_tax st ON t.sales_tax_id = st.id
-      ORDER BY t.created_at DESC
-    `);
+    SELECT t.*, p.name as partyName, p.phone as partyPhone,
+           sv.name as ship_via_name, 
+           st.name as sales_tax_name, st.tax_rate as sales_tax_rate
+    FROM tickets t
+    LEFT JOIN parties p ON t.party_id = p.id
+    LEFT JOIN ship_via sv ON t.ship_via_id = sv.id
+    LEFT JOIN sales_tax st ON t.sales_tax_id = st.id
+    ORDER BY t.created_at DESC
+  `);
     return stmt.all();
   },
 
@@ -27,46 +27,47 @@ const TicketModel = {
   getById(id) {
     // Get the ticket
     const ticketStmt = db.prepare(`
-      SELECT t.*, 
-             p.name as partyName, 
-             p.phone as partyPhone,
-             ba.address_line1 as billingAddress1,
-             ba.address_line2 as billingAddress2,
-             ba.city as billingCity,
-             ba.state as billingState,
-             ba.county as billingCounty,
-             ba.postal_code as billingPostalCode,
-             sa.address_line1 as shippingAddress1,
-             sa.address_line2 as shippingAddress2,
-             sa.city as shippingCity,
-             sa.state as shippingState,
-             sa.county as shippingCounty,
-             sa.postal_code as shippingPostalCode,
-             sv.name as ship_via_name, 
-             sv.description as ship_via_description,
-             st.name as sales_tax_name, 
-             st.tax_rate as sales_tax_rate,
-             st.county as sales_tax_county, 
-             st.state as sales_tax_state
-      FROM tickets t
-      LEFT JOIN parties p ON t.party_id = p.id
-      LEFT JOIN addresses ba ON t.billing_address_id = ba.id
-      LEFT JOIN addresses sa ON t.shipping_address_id = sa.id
-      LEFT JOIN ship_via sv ON t.ship_via_id = sv.id
-      LEFT JOIN sales_tax st ON t.sales_tax_id = st.id
-      WHERE t.id = ?
-    `);
+    SELECT t.*, 
+           p.name as partyName, 
+           p.phone as partyPhone,
+           ba.address_line1 as billingAddress1,
+           ba.address_line2 as billingAddress2,
+           ba.city as billingCity,
+           ba.state as billingState,
+           ba.county as billingCounty,
+           ba.postal_code as billingPostalCode,
+           sa.address_line1 as shippingAddress1,
+           sa.address_line2 as shippingAddress2,
+           sa.city as shippingCity,
+           sa.state as shippingState,
+           sa.county as shippingCounty,
+           sa.postal_code as shippingPostalCode,
+           sv.name as ship_via_name, 
+           sv.description as ship_via_description,
+           st.name as sales_tax_name, 
+           st.tax_rate as sales_tax_rate,
+           st.county as sales_tax_county, 
+           st.state as sales_tax_state
+    FROM tickets t
+    LEFT JOIN parties p ON t.party_id = p.id
+    LEFT JOIN addresses ba ON t.billing_address_id = ba.id
+    LEFT JOIN addresses sa ON t.shipping_address_id = sa.id
+    LEFT JOIN ship_via sv ON t.ship_via_id = sv.id
+    LEFT JOIN sales_tax st ON t.sales_tax_id = st.id
+    WHERE t.id = ?
+  `);
     const ticket = ticketStmt.get(id);
 
     if (!ticket) return null;
 
-    // Get the ticket items
+    // Get the ticket items sorted by distribution_number
     const itemsStmt = db.prepare(`
-      SELECT ti.*, s.name as speciesName, s.list_name as speciesListName
-      FROM ticket_items ti
-      LEFT JOIN species s ON ti.species_id = s.id
-      WHERE ti.ticketId = ?
-    `);
+    SELECT ti.*, s.name as speciesName, s.list_name as speciesListName, s.species_number
+    FROM ticket_items ti
+    LEFT JOIN species s ON ti.species_id = s.id
+    WHERE ti.ticketId = ?
+    ORDER BY ti.distribution_number ASC
+  `);
     const items = itemsStmt.all(id);
 
     // Combine ticket with its items
@@ -102,6 +103,57 @@ const TicketModel = {
   },
 
   /**
+   * Sort ticket items according to the specified criteria
+   * @param {Array} items - Array of ticket items to sort
+   * @returns {Array} Sorted and numbered ticket items
+   */
+  sortAndNumberItems(items) {
+    // Get species information if needed for sorting
+    const speciesMap = new Map();
+    const speciesStmt = db.prepare(`SELECT id, species_number FROM species`);
+    const speciesList = speciesStmt.all();
+    speciesList.forEach((species) => {
+      speciesMap.set(species.id, parseInt(species.species_number, 10));
+    });
+
+    // First, create a copy and sort the items
+    const sortedItems = [...items].sort((a, b) => {
+      // Helper function to handle null values (nulls go to end)
+      const compareValues = (valA, valB) => {
+        if (valA === null && valB === null) return 0;
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+        return valA - valB;
+      };
+
+      // First sort by species number (ascending)
+      const speciesNumberA = a.species_id ? speciesMap.get(a.species_id) : null;
+      const speciesNumberB = b.species_id ? speciesMap.get(b.species_id) : null;
+      const speciesCompare = compareValues(speciesNumberA, speciesNumberB);
+      if (speciesCompare !== 0) return speciesCompare;
+
+      // Then by thickness (ascending)
+      const thicknessCompare = compareValues(a.thickness, b.thickness);
+      if (thicknessCompare !== 0) return thicknessCompare;
+
+      // Then by width (ascending)
+      const widthCompare = compareValues(a.width, b.width);
+      if (widthCompare !== 0) return widthCompare;
+
+      // Finally by length (ascending)
+      const lengthCompare = compareValues(a.length, b.length);
+      return lengthCompare;
+    });
+
+    // Assign distribution numbers
+    sortedItems.forEach((item, index) => {
+      item.distribution_number = index + 1;
+    });
+
+    return sortedItems;
+  },
+
+  /**
    * Create a new ticket
    * @param {Object} ticket - Ticket object
    * @param {Array} items - Array of ticket item objects
@@ -113,15 +165,21 @@ const TicketModel = {
       // Get the next invoice number
       const nextInvoiceNumber = this.getNextInvoiceNumber();
 
+      // Sort and number the items
+      const sortedItems = this.sortAndNumberItems(items);
+
+      // Set distribution_total
+      ticket.distribution_total = sortedItems.length;
+
       // Insert the ticket
       const ticketStmt = db.prepare(`
       INSERT INTO tickets (
         id, invoice_number, party_id, billing_address_id, shipping_address_id,
         ship_via_id, sales_tax_id, customerName, customerPhone, date, due_date,
         ticket_type, purchase_order, shipping_attention, total_freight,
-        status, total_bf, total_tax, total_amount
+        status, total_bf, total_tax, total_amount, distribution_total
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
       ticketStmt.run(
@@ -143,7 +201,8 @@ const TicketModel = {
         ticket.status || "draft",
         ticket.total_bf || 0,
         ticket.total_tax || 0,
-        ticket.total_amount || 0
+        ticket.total_amount || 0,
+        ticket.distribution_total || 0
       );
 
       // Update the sequence
@@ -155,22 +214,22 @@ const TicketModel = {
     `
       ).run(nextInvoiceNumber);
 
-      // Insert each item
+      // Insert each item with distribution_number
       const itemStmt = db.prepare(`
       INSERT INTO ticket_items (
         ticketId, species_id, quantity, width, thickness, length, 
-        price_per_mbf, total_bf, tax_amount, total_tax, total_amount
+        price_per_mbf, total_bf, tax_amount, total_tax, total_amount, distribution_number
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-      for (const item of items) {
+      for (const item of sortedItems) {
         // Convert empty species_id to null for database foreign key constraint
         const speciesId = item.species_id === "" ? null : item.species_id;
 
         itemStmt.run(
           ticket.id,
-          speciesId, // Use null instead of empty string
+          speciesId,
           item.quantity,
           item.width,
           item.thickness,
@@ -179,7 +238,8 @@ const TicketModel = {
           item.total_bf || 0,
           item.tax_amount || 0,
           item.total_tax || 0,
-          item.total_amount || 0
+          item.total_amount || 0,
+          item.distribution_number
         );
       }
 
@@ -201,6 +261,12 @@ const TicketModel = {
   update(id, ticket, items) {
     // Start a transaction
     const updateTicket = db.transaction((id, ticket, items) => {
+      // Sort and number the items
+      const sortedItems = this.sortAndNumberItems(items);
+
+      // Set distribution_total
+      ticket.distribution_total = sortedItems.length;
+
       // Update the ticket
       const ticketStmt = db.prepare(`
       UPDATE tickets
@@ -221,6 +287,7 @@ const TicketModel = {
           total_bf = ?,
           total_tax = ?,
           total_amount = ?,
+          distribution_total = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
@@ -243,6 +310,7 @@ const TicketModel = {
         ticket.total_bf || 0,
         ticket.total_tax || 0,
         ticket.total_amount || 0,
+        ticket.distribution_total || 0,
         id
       );
 
@@ -252,22 +320,22 @@ const TicketModel = {
     `);
       deleteItemsStmt.run(id);
 
-      // Insert new items
+      // Insert new items with distribution_number
       const itemStmt = db.prepare(`
       INSERT INTO ticket_items (
         ticketId, species_id, quantity, width, thickness, length, 
-        price_per_mbf, total_bf, tax_amount, total_tax, total_amount
+        price_per_mbf, total_bf, tax_amount, total_tax, total_amount, distribution_number
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-      for (const item of items) {
+      for (const item of sortedItems) {
         // Convert empty species_id to null for database foreign key constraint
         const speciesId = item.species_id === "" ? null : item.species_id;
 
         itemStmt.run(
           id,
-          speciesId, // Use null instead of empty string
+          speciesId,
           item.quantity,
           item.width,
           item.thickness,
@@ -276,7 +344,8 @@ const TicketModel = {
           item.total_bf || 0,
           item.tax_amount || 0,
           item.total_tax || 0,
-          item.total_amount || 0
+          item.total_amount || 0,
+          item.distribution_number
         );
       }
 
