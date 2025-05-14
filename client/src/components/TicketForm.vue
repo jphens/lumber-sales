@@ -172,22 +172,22 @@
                 <td>
                   <input type="number" v-model.number="item.quantity" class="form-control form-control-sm text-center"
                     :class="{ 'null-field': !item.quantity || item.quantity === 0 }" @change="calculateItemTotal(index)"
-                    min="0" />
+                    @keydown="preventArrowKeys" min="0" />
                 </td>
                 <td>
                   <div class="input-group input-group-sm">
                     <input type="number" v-model.number="item.thickness"
                       class="form-control text-right lumber-dimension"
                       :class="{ 'null-field': !item.thickness || item.thickness === 0 }"
-                      @change="calculateItemTotal(index)" min="0" step="0.01" />
+                      @change="calculateItemTotal(index)" @keydown="preventArrowKeys" min="0" step="0.01" />
                     <div class="input-group-text">×</div>
                     <input type="number" v-model.number="item.width" class="form-control text-right lumber-dimension"
                       :class="{ 'null-field': !item.width || item.width === 0 }" @change="calculateItemTotal(index)"
-                      min="0" step="0.01" />
+                      @keydown="preventArrowKeys" min="0" step="0.01" />
                     <div class="input-group-text">×</div>
                     <input type="number" v-model.number="item.length" class="form-control text-right lumber-dimension"
                       :class="{ 'null-field': !item.length || item.length === 0 }" @change="calculateItemTotal(index)"
-                      min="0" step="0.01" />
+                      @keydown="preventArrowKeys" min="0" step="0.01" />
                   </div>
                 </td>
                 <td class="text-right">{{ formatNumber(item.total_bf) }}</td>
@@ -196,8 +196,9 @@
                     <div class="input-group-text">$</div>
                     <input type="number" v-model.number="item.price_per_mbf" class="form-control text-right"
                       :class="{ 'null-field': !item.price_per_mbf || item.price_per_mbf === 0 }"
-                      @change="calculateItemTotal(index)" @keydown.tab="handleLastFieldTab(index, $event)"
-                      ref="lastField" min="0" step="0.01" />
+                      @change="calculateItemTotal(index)"
+                      @keydown="handleLastFieldTab(index, $event); preventArrowKeys($event)" ref="lastField" min="0"
+                      step="0.01" />
                   </div>
                 </td>
                 <td class="text-right">${{ formatCurrency(item.total_amount) }}</td>
@@ -226,7 +227,7 @@
               <div class="total-row">
                 <span class="label">Freight:</span>
                 <span class="value">$<input type="number" v-model.number="ticket.total_freight" class="freight-input"
-                    @change="calculateTotals" /></span>
+                    @change="calculateTotals" @keydown="preventArrowKeys" /></span>
               </div>
               <!-- New Sales Tax dropdown -->
               <div class="total-row">
@@ -382,7 +383,7 @@ export default {
     formatCurrency(value) {
       return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
-  
+
     formatPercent(value) {
       return (Number(value || 0) * 100).toFixed(2) + '%';
     },
@@ -463,6 +464,12 @@ export default {
             this.addItem();
           }
         }
+      }
+    },
+    preventArrowKeys(event) {
+      // Prevent up arrow (38) and down arrow (40) keys
+      if (event.keyCode === 38 || event.keyCode === 40) {
+        event.preventDefault();
       }
     },
     calculateSubtotal() {
@@ -1125,6 +1132,7 @@ export default {
 .lumber-items input[type="number"] {
   padding-right: 0.3rem;
 }
+
 /* Highlight null/empty fields in light orange */
 .null-field {
   background-color: #ffe0b3;
@@ -1140,5 +1148,16 @@ export default {
 /* Optional: add a subtle transition effect */
 .form-control {
   transition: background-color 0.2s ease-in-out;
+}
+
+/* Remove spinner buttons from number fields */
+.ticket-form input[type="number"]::-webkit-inner-spin-button,
+.ticket-form input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ticket-form input[type="number"] {
+  -moz-appearance: textfield;
 }
 </style>
